@@ -123,6 +123,14 @@ obj-${CONFIG_MACH_TRIMSLICE}            += board-trimslice-pinmux.o
 
 obj-${CONFIG_MACH_P852}                 += p852/
 
+obj-${CONFIG_MACH_RAYMAN}               += board-rayman.o
+obj-${CONFIG_MACH_RAYMAN}               += board-rayman-pinmux.o
+obj-${CONFIG_MACH_RAYMAN}               += board-rayman-sdhci.o
+obj-${CONFIG_MACH_RAYMAN}               += board-rayman-power.o
+obj-${CONFIG_MACH_RAYMAN}               += board-rayman-panel.o
+obj-${CONFIG_MACH_RAYMAN}               += board-rayman-sensors.o
+obj-${CONFIG_MACH_RAYMAN}               += board-rayman-memory.o
+
 obj-${CONFIG_MACH_VENTANA}              += board-ventana.o
 obj-${CONFIG_MACH_VENTANA}              += board-ventana-pinmux.o
 obj-${CONFIG_MACH_VENTANA}              += board-ventana-sdhci.o
