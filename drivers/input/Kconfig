@@ -179,6 +179,13 @@ config INPUT_ASUSEC
 	  To compile this driver as a module, choose M here: the
 	  module will be called asusec.
 
+config SENSORS_PROX_LDS6202
+	tristate "IDT Proximity Sensor Driver LDS6202"
+	depends on I2C
+	---help---
+	  This enables support for Proximity sensor over I2C based sensors.
+
+
 comment "Input Device Drivers"
 
 source "drivers/input/keyboard/Kconfig"
