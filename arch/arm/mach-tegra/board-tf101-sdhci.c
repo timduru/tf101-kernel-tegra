@@ -30,36 +30,86 @@
 
 #include "gpio-names.h"
 #include "board.h"
-#include "devices.h"
 
-#if 0
-#define TF101_WLAN_PWR	TEGRA_GPIO_PK5
-#endif
-#define TF101_WLAN_RST	TEGRA_GPIO_PK6
+#define VENTANA_WLAN_PWR	TEGRA_GPIO_PK5
+#define VENTANA_WLAN_RST	TEGRA_GPIO_PK6
+#define VENTANA_WLAN_WOW	TEGRA_GPIO_PS0
 
 static void (*wifi_status_cb)(int card_present, void *dev_id);
 static void *wifi_status_cb_devid;
-static int tf101_wifi_status_register(void (*callback)(int , void *), void *);
+static int ventana_wifi_status_register(void (*callback)(int , void *), void *);
+static struct clk *wifi_32k_clk;
 
-static int tf101_wifi_reset(int on);
-static int tf101_wifi_power(int on);
-static int tf101_wifi_set_carddetect(int val);
+static int ventana_wifi_reset(int on);
+static int ventana_wifi_power(int on);
+static int ventana_wifi_set_carddetect(int val);
 
-static struct wifi_platform_data tf101_wifi_control = {
-	.set_power	= tf101_wifi_power,
-	.set_reset	= tf101_wifi_reset,
-	.set_carddetect = tf101_wifi_set_carddetect,
+static struct wifi_platform_data ventana_wifi_control = {
+	.set_power	= ventana_wifi_power,
+	.set_reset	= ventana_wifi_reset,
+	.set_carddetect = ventana_wifi_set_carddetect,
 };
 
-static struct platform_device tf101_wifi_device = {
-	.name		= "bcm4329_wlan",
-	.id		= 1,
-	.dev		= {
-		.platform_data = &tf101_wifi_control,
+static struct resource wifi_resource[] = {
+	[0] = {
+		.name  = "bcm4329_wlan_irq",
+		.start = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PS0),
+		.end   = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PS0),
+		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL | IORESOURCE_IRQ_SHAREABLE,
 	},
 };
 
-static struct embedded_sdio_data embedded_sdio_data1 = {
+static struct platform_device ventana_wifi_device = {
+	.name		= "bcm4329_wlan",
+	.id		= 1,
+	.num_resources  = 1,
+	.resource	= wifi_resource,
+	.dev		= {
+		.platform_data = &ventana_wifi_control,
+	},
+};
+
+static struct resource sdhci_resource0[] = {
+	[0] = {
+		.start	= INT_SDMMC1,
+		.end	= INT_SDMMC1,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[1] = {
+		.start	= TEGRA_SDMMC1_BASE,
+		.end	= TEGRA_SDMMC1_BASE + TEGRA_SDMMC1_SIZE-1,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+static struct resource sdhci_resource2[] = {
+	[0] = {
+		.start	= INT_SDMMC3,
+		.end	= INT_SDMMC3,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[1] = {
+		.start	= TEGRA_SDMMC3_BASE,
+		.end	= TEGRA_SDMMC3_BASE + TEGRA_SDMMC3_SIZE-1,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+static struct resource sdhci_resource3[] = {
+	[0] = {
+		.start	= INT_SDMMC4,
+		.end	= INT_SDMMC4,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[1] = {
+		.start	= TEGRA_SDMMC4_BASE,
+		.end	= TEGRA_SDMMC4_BASE + TEGRA_SDMMC4_SIZE-1,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+static struct embedded_sdio_data embedded_sdio_data0 = {
 	.cccr   = {
 		.sdio_vsn	= 2,
 		.multi_block	= 1,
@@ -73,40 +123,75 @@ static struct embedded_sdio_data embedded_sdio_data1 = {
 		.device 	= 0x4329,
 	},
 };
+#endif
 
-static struct tegra_sdhci_platform_data tegra_sdhci_platform_data1 = {
+static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.mmc_data = {
-		.register_status_notify	= tf101_wifi_status_register,
-		.embedded_sdio = &embedded_sdio_data1,
+		.register_status_notify	= ventana_wifi_status_register,
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+		.embedded_sdio = &embedded_sdio_data0,
+#endif
 		.built_in = 0,
+		.ocr_mask = MMC_OCR_1V8_MASK,
 	},
+#ifndef CONFIG_MMC_EMBEDDED_SDIO
+	.pm_flags = MMC_PM_KEEP_POWER,
+#endif
 	.cd_gpio = -1,
 	.wp_gpio = -1,
 	.power_gpio = -1,
-	.max_clk_limit = 40000000,
+};
+
+static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
+	.cd_gpio = TEGRA_GPIO_PI5,
+	.wp_gpio = TEGRA_GPIO_PH1,
+	.power_gpio = TEGRA_GPIO_PI6,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
-	.cd_gpio = TEGRA_GPIO_PI5,
-	.wp_gpio = TEGRA_GPIO_PH1,
-	.power_gpio = TEGRA_GPIO_PT3,
-};
-
-static struct tegra_sdhci_platform_data tegra_sdhci_platform_data4 = {
+	.is_8bit = 1,
 	.cd_gpio = -1,
 	.wp_gpio = -1,
-	.power_gpio = TEGRA_GPIO_PI6,
-	.is_8bit = 1,
+	.power_gpio = -1,
 	.mmc_data = {
 		.built_in = 1,
 	}
 };
 
-static int tf101_wifi_status_register(
+static struct platform_device tegra_sdhci_device0 = {
+	.name		= "sdhci-tegra",
+	.id		= 0,
+	.resource	= sdhci_resource0,
+	.num_resources	= ARRAY_SIZE(sdhci_resource0),
+	.dev = {
+		.platform_data = &tegra_sdhci_platform_data0,
+	},
+};
+
+static struct platform_device tegra_sdhci_device2 = {
+	.name		= "sdhci-tegra",
+	.id		= 2,
+	.resource	= sdhci_resource2,
+	.num_resources	= ARRAY_SIZE(sdhci_resource2),
+	.dev = {
+		.platform_data = &tegra_sdhci_platform_data2,
+	},
+};
+
+static struct platform_device tegra_sdhci_device3 = {
+	.name		= "sdhci-tegra",
+	.id		= 3,
+	.resource	= sdhci_resource3,
+	.num_resources	= ARRAY_SIZE(sdhci_resource3),
+	.dev = {
+		.platform_data = &tegra_sdhci_platform_data3,
+	},
+};
+
+static int ventana_wifi_status_register(
 		void (*callback)(int card_present, void *dev_id),
 		void *dev_id)
 {
-	pr_debug("%s: %p %p\n", __func__, callback, dev_id);
 	if (wifi_status_cb)
 		return -EAGAIN;
 	wifi_status_cb = callback;
@@ -114,7 +199,7 @@ static int tf101_wifi_status_register(
 	return 0;
 }
 
-static int tf101_wifi_set_carddetect(int val)
+static int ventana_wifi_set_carddetect(int val)
 {
 	pr_debug("%s: %d\n", __func__, val);
 	if (wifi_status_cb)
@@ -124,60 +209,81 @@ static int tf101_wifi_set_carddetect(int val)
 	return 0;
 }
 
-static int tf101_wifi_power(int on)
+static int ventana_wifi_power(int on)
 {
 	pr_debug("%s: %d\n", __func__, on);
 
-#if 0
-	gpio_set_value(TF101_WLAN_PWR, on);
+	gpio_set_value(VENTANA_WLAN_PWR, on);
 	mdelay(100);
-#endif
-	gpio_set_value(TF101_WLAN_RST, on);
+	gpio_set_value(VENTANA_WLAN_RST, on);
 	mdelay(200);
+
+	if (on)
+		clk_enable(wifi_32k_clk);
+	else
+		clk_disable(wifi_32k_clk);
 
 	return 0;
 }
 
-static int tf101_wifi_reset(int on)
+static int ventana_wifi_reset(int on)
 {
 	pr_debug("%s: do nothing\n", __func__);
 	return 0;
 }
 
-static int __init tf101_wifi_init(void)
+#ifdef CONFIG_TEGRA_PREPOWER_WIFI
+static int __init ventana_wifi_prepower(void)
 {
-	//gpio_request(TF101_WLAN_PWR, "wlan_power");
-	gpio_request(TF101_WLAN_RST, "wlan_rst");
+	if (!machine_is_ventana())
+		return 0;
 
-	//tegra_gpio_enable(TF101_WLAN_PWR);
-	tegra_gpio_enable(TF101_WLAN_RST);
-
-	//gpio_direction_output(TF101_WLAN_PWR, 0);
-	gpio_direction_output(TF101_WLAN_RST, 0);
-
-	platform_device_register(&tf101_wifi_device);
-
-	device_init_wakeup(&tf101_wifi_device.dev, 1);
-	device_set_wakeup_enable(&tf101_wifi_device.dev, 0);
+	ventana_wifi_power(1);
 
 	return 0;
 }
 
-int __init tf101_sdhci_init(void)
+subsys_initcall_sync(ventana_wifi_prepower);
+#endif
+
+static int __init ventana_wifi_init(void)
 {
+	wifi_32k_clk = clk_get_sys(NULL, "blink");
+	if (IS_ERR(wifi_32k_clk)) {
+		pr_err("%s: unable to get blink clock\n", __func__);
+		return PTR_ERR(wifi_32k_clk);
+	}
+
+	gpio_request(VENTANA_WLAN_PWR, "wlan_power");
+	gpio_request(VENTANA_WLAN_RST, "wlan_rst");
+	gpio_request(VENTANA_WLAN_WOW, "bcmsdh_sdmmc");
+
+	tegra_gpio_enable(VENTANA_WLAN_PWR);
+	tegra_gpio_enable(VENTANA_WLAN_RST);
+	tegra_gpio_enable(VENTANA_WLAN_WOW);
+
+	gpio_direction_output(VENTANA_WLAN_PWR, 0);
+	gpio_direction_output(VENTANA_WLAN_RST, 0);
+	gpio_direction_input(VENTANA_WLAN_WOW);
+
+	platform_device_register(&ventana_wifi_device);
+
+	device_init_wakeup(&ventana_wifi_device.dev, 1);
+	device_set_wakeup_enable(&ventana_wifi_device.dev, 0);
+
+	return 0;
+}
+int __init ventana_sdhci_init(void)
+{
+	tegra_gpio_enable(tegra_sdhci_platform_data2.power_gpio);
+	tegra_gpio_enable(tegra_sdhci_platform_data2.cd_gpio);
+	tegra_gpio_enable(tegra_sdhci_platform_data2.wp_gpio);
 	tegra_gpio_enable(tegra_sdhci_platform_data3.power_gpio);
-	tegra_gpio_enable(tegra_sdhci_platform_data3.cd_gpio);
-	tegra_gpio_enable(tegra_sdhci_platform_data3.wp_gpio);
-	tegra_gpio_enable(tegra_sdhci_platform_data4.power_gpio);
 
-	tegra_sdhci_device1.dev.platform_data = &tegra_sdhci_platform_data1;
-	tegra_sdhci_device3.dev.platform_data = &tegra_sdhci_platform_data3;
-	tegra_sdhci_device4.dev.platform_data = &tegra_sdhci_platform_data4;
-
-	platform_device_register(&tegra_sdhci_device4);
 	platform_device_register(&tegra_sdhci_device3);
-	platform_device_register(&tegra_sdhci_device1);
+	platform_device_register(&tegra_sdhci_device2);
+	platform_device_register(&tegra_sdhci_device0);
 
-	tf101_wifi_init();
+	ventana_wifi_init();
 	return 0;
 }

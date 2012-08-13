@@ -90,7 +90,7 @@ config MACH_VENTANA
        help
          Support for NVIDIA Ventana development platform
 
-config MACH_RAYMAN
+config MACH_TF101
        bool "Asus TF101 board"
        depends on ARCH_TEGRA_2x_SOC
        select MACH_HAS_SND_SOC_TEGRA_WM8903 if SND_SOC
