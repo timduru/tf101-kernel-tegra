@@ -3,7 +3,7 @@
  *
  * Tegra graphics host driver
  *
- * Copyright (c) 2009-2012, NVIDIA Corporation.
+ * Copyright (c) 2009-2011, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,114 +28,32 @@
 
 struct nvhost_master;
 
-#define NVHOST_MODULE_MAX_CLOCKS 3
-#define NVHOST_MODULE_MAX_POWERGATE_IDS 2
 #define NVHOST_MODULE_NO_POWERGATE_IDS .powergate_ids = {-1, -1}
 #define NVHOST_DEFAULT_CLOCKGATE_DELAY .clockgate_delay = 25
-#define NVHOST_NAME_SIZE	24
 
-struct nvhost_device_id {
-	char name[NVHOST_NAME_SIZE];
-	unsigned long driver_data;
-};
-
-struct nvhost_clock {
-	char *name;
-	long default_rate;
-};
-
-enum nvhost_device_powerstate_t {
-	NVHOST_POWER_STATE_DEINIT,
-	NVHOST_POWER_STATE_RUNNING,
-	NVHOST_POWER_STATE_CLOCKGATED,
-	NVHOST_POWER_STATE_POWERGATED
-};
 
 struct nvhost_device {
-	/* device name: its format is of type -
-	 * <name><ip-version>.<instance>
-	 * e.g.: gr3d01 = gr3d ip version 01 used in tegra2
-	 * no instance number means hardware supports single instance */
-	const char	*name;
-	struct device	dev;		/* Linux device struct */
-	int		id;		/* Separates clients of same hw */
-	int		index;		/* Hardware channel number */
-	u32		num_resources;	/* Number of resources following */
-	struct resource	*resource;	/* Resources (IOMEM in particular) */
-	struct resource	*reg_mem;
-	void __iomem	*aperture;	/* Iomem mapped to kernel */
+	const char		*name;
+	struct device		dev;
+	int			id;
+	u32			num_resources;
+	struct resource		*resource;
 
-	u32		syncpts;	/* Bitfield of sync points used */
-	u32		waitbases;	/* Bit field of wait bases */
-	u32		modulemutexes;	/* Bit field of module mutexes */
-	u32		moduleid;	/* Module id for user space API */
-
-	u32		class;		/* Device class */
-	bool		exclusive;	/* True if only one user at a time */
-	bool		keepalive;	/* Do not power gate when opened */
-	bool		waitbasesync;	/* Force sync of wait bases */
-	bool		powerup_reset;	/* Do a reset after power un-gating */
-
-	int		powergate_ids[NVHOST_MODULE_MAX_POWERGATE_IDS];
-	bool		can_powergate;	/* True if module can be power gated */
-	int		clockgate_delay;/* Delay before clock gated */
-	int		powergate_delay;/* Delay before power gated */
-	struct nvhost_clock clocks[NVHOST_MODULE_MAX_CLOCKS];/* Clock names */
-
-	struct delayed_work powerstate_down;/* Power state management */
-	int		num_clks;	/* Number of clocks opened for dev */
-	struct clk	*clk[NVHOST_MODULE_MAX_CLOCKS];
-	struct mutex	lock;		/* Power management lock */
-	int		powerstate;	/* Current power state */
-	int		refcount;	/* Number of tasks active */
-	wait_queue_head_t idle_wq;	/* Work queue for idle */
-	struct list_head client_list;	/* List of clients and rate requests */
-
-	struct nvhost_channel *channel;	/* Channel assigned for the module */
+	struct nvhost_master	*host;
 };
 
-/* Register device to nvhost bus */
 extern int nvhost_device_register(struct nvhost_device *);
-
-/* Deregister device from nvhost bus */
 extern void nvhost_device_unregister(struct nvhost_device *);
 
 extern struct bus_type nvhost_bus_type;
 
 struct nvhost_driver {
-	int (*probe)(struct nvhost_device *, struct nvhost_device_id *);
+	int (*probe)(struct nvhost_device *);
 	int (*remove)(struct nvhost_device *);
 	void (*shutdown)(struct nvhost_device *);
 	int (*suspend)(struct nvhost_device *, pm_message_t state);
 	int (*resume)(struct nvhost_device *);
 	struct device_driver driver;
-
-	struct nvhost_device_id *id_table;
-
-	/* Finalize power on. Can be used for context restore. */
-	void (*finalize_poweron)(struct nvhost_device *dev);
-
-	/* Device is busy. */
-	void (*busy)(struct nvhost_device *);
-
-	/* Device is idle. */
-	void (*idle)(struct nvhost_device *);
-
-	/* Device is going to be suspended */
-	void (*suspend_ndev)(struct nvhost_device *);
-
-	/* Device is initialized */
-	void (*init)(struct nvhost_device *dev);
-
-	/* Device is de-initialized. */
-	void (*deinit)(struct nvhost_device *dev);
-
-	/* Preparing for power off. Used for context save. */
-	int (*prepare_poweroff)(struct nvhost_device *dev);
-
-	/* Allocates a context handler for the device */
-	struct nvhost_hwctx_handler *(*alloc_hwctx_handler)(u32 syncpt,
-			u32 waitbase, struct nvhost_channel *ch);
 };
 
 extern int nvhost_driver_register(struct nvhost_driver *);
@@ -147,19 +65,13 @@ extern struct resource *nvhost_get_resource_byname(struct nvhost_device *,
 		unsigned int, const char *);
 extern int nvhost_get_irq_byname(struct nvhost_device *, const char *);
 
-#define to_nvhost_device(x)	container_of((x), struct nvhost_device, dev)
+#define to_nvhost_device(x) container_of((x), struct nvhost_device, dev)
 #define to_nvhost_driver(drv)	(container_of((drv), struct nvhost_driver, \
 				 driver))
 
-#define nvhost_get_drvdata(_dev)	dev_get_drvdata(&(_dev)->dev)
-#define nvhost_set_drvdata(_dev, data)	dev_set_drvdata(&(_dev)->dev, (data))
-static inline struct nvhost_master *nvhost_get_host(struct nvhost_device *_dev)
-{
-	return (_dev->dev.parent) ? \
-		((struct nvhost_master *) dev_get_drvdata(_dev->dev.parent)) : \
-		((struct nvhost_master *) dev_get_drvdata(&(_dev->dev)));
-}
+#define nvhost_get_drvdata(_dev) dev_get_drvdata(&(_dev)->dev)
+#define nvhost_set_drvdata(_dev, data) dev_set_drvdata(&(_dev)->dev, (data))
 
-int nvhost_bus_add_host(struct nvhost_master *host);
+int nvhost_bus_register(struct nvhost_master *host);
 
 #endif

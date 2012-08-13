@@ -3,19 +3,21 @@
  *
  * Tegra Graphics Host 3D clock scaling
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2011, NVIDIA Corporation.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
- * This program is distributed in the hope it will be useful, but WITHOUT
+ * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
 /*
@@ -40,7 +42,7 @@
 #include <mach/clk.h>
 #include <mach/hardware.h>
 #include "scale3d.h"
-#include "dev.h"
+#include "../dev.h"
 
 static int scale3d_is_enabled(void);
 static void scale3d_enable(int enable);
@@ -151,11 +153,8 @@ static void scale3d_clocks_handler(struct work_struct *work)
 		scale3d_clocks(scale);
 }
 
-void nvhost_scale3d_suspend(struct nvhost_device *dev)
+void nvhost_scale3d_suspend(struct nvhost_module *mod)
 {
-	if (!scale3d.enable)
-		return;
-
 	cancel_work_sync(&scale3d.work);
 	cancel_delayed_work(&scale3d.idle_timer);
 }
@@ -176,9 +175,6 @@ static void reset_3d_clocks(void)
 static int scale3d_is_enabled(void)
 {
 	int enable;
-
-	if (!scale3d.enable)
-		return 0;
 
 	mutex_lock(&scale3d.lock);
 	enable = scale3d.enable;
@@ -374,15 +370,15 @@ static void scaling_state_check(ktime_t time)
 	}
 }
 
-void nvhost_scale3d_notify_idle(struct nvhost_device *dev)
+void nvhost_scale3d_notify_idle(struct nvhost_module *mod)
 {
 	ktime_t t;
 	unsigned long dt;
 
-	if (!scale3d.enable)
-		return;
-
 	mutex_lock(&scale3d.lock);
+
+	if (!scale3d.enable)
+		goto done;
 
 	t = ktime_get();
 
@@ -404,19 +400,20 @@ void nvhost_scale3d_notify_idle(struct nvhost_device *dev)
 		msecs_to_jiffies((scale3d.idle_max * scale3d.fast_response)
 			/ 50000));
 
+done:
 	mutex_unlock(&scale3d.lock);
 }
 
-void nvhost_scale3d_notify_busy(struct nvhost_device *dev)
+void nvhost_scale3d_notify_busy(struct nvhost_module *mod)
 {
 	unsigned long idle;
 	unsigned long short_term_idle;
 	ktime_t t;
 
-	if (!scale3d.enable)
-		return;
-
 	mutex_lock(&scale3d.lock);
+
+	if (!scale3d.enable)
+		goto done;
 
 	cancel_delayed_work(&scale3d.idle_timer);
 
@@ -434,6 +431,7 @@ void nvhost_scale3d_notify_busy(struct nvhost_device *dev)
 
 	scaling_state_check(t);
 
+done:
 	mutex_unlock(&scale3d.lock);
 }
 
@@ -441,12 +439,10 @@ static void scale3d_idle_handler(struct work_struct *work)
 {
 	int notify_idle = 0;
 
-	if (!scale3d.enable)
-		return;
-
 	mutex_lock(&scale3d.lock);
 
-	if (scale3d.is_idle && tegra_is_clk_enabled(scale3d.clk_3d)) {
+	if (scale3d.enable && scale3d.is_idle &&
+		tegra_is_clk_enabled(scale3d.clk_3d)) {
 		unsigned long curr = clk_get_rate(scale3d.clk_3d);
 		if (curr > scale3d.min_rate_3d)
 			notify_idle = 1;
@@ -460,12 +456,7 @@ static void scale3d_idle_handler(struct work_struct *work)
 
 void nvhost_scale3d_reset()
 {
-	ktime_t t;
-
-	if (!scale3d.enable)
-		return;
-
-	t = ktime_get();
+	ktime_t t = ktime_get();
 	mutex_lock(&scale3d.lock);
 	reset_scaling_counters(t);
 	mutex_unlock(&scale3d.lock);
@@ -529,10 +520,10 @@ static ssize_t enable_3d_scaling_store(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(enable_3d_scaling, S_IRUGO | S_IWUSR,
+static DEVICE_ATTR(enable_3d_scaling, S_IRUGO | S_IWUGO,
 	enable_3d_scaling_show, enable_3d_scaling_store);
 
-void nvhost_scale3d_init(struct nvhost_device *d)
+void nvhost_scale3d_init(struct device *d, struct nvhost_module *mod)
 {
 	if (!scale3d.init) {
 		int error;
@@ -540,15 +531,12 @@ void nvhost_scale3d_init(struct nvhost_device *d)
 		long correction;
 		mutex_init(&scale3d.lock);
 
-		INIT_WORK(&scale3d.work, scale3d_clocks_handler);
-		INIT_DELAYED_WORK(&scale3d.idle_timer, scale3d_idle_handler);
-
-		scale3d.clk_3d = d->clk[0];
+		scale3d.clk_3d = mod->clk[0];
 		if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA3) {
-			scale3d.clk_3d2 = d->clk[1];
-			scale3d.clk_3d_emc = d->clk[2];
+			scale3d.clk_3d2 = mod->clk[1];
+			scale3d.clk_3d_emc = mod->clk[2];
 		} else
-			scale3d.clk_3d_emc = d->clk[1];
+			scale3d.clk_3d_emc = mod->clk[1];
 
 		scale3d.max_rate_3d = clk_round_rate(scale3d.clk_3d, UINT_MAX);
 		scale3d.min_rate_3d = clk_round_rate(scale3d.clk_3d, 0);
@@ -632,6 +620,9 @@ void nvhost_scale3d_init(struct nvhost_device *d)
 				POW2(scale3d.max_rate_3d - scale3d.emc_xmid);
 		scale3d.emc_dip_offset -= correction;
 
+		INIT_WORK(&scale3d.work, scale3d_clocks_handler);
+		INIT_DELAYED_WORK(&scale3d.idle_timer, scale3d_idle_handler);
+
 		/* set scaling parameter defaults */
 		scale3d.enable = 1;
 		scale3d.period = scale3d.p_period = 100000;
@@ -643,10 +634,9 @@ void nvhost_scale3d_init(struct nvhost_device *d)
 		scale3d.p_verbosity = 0;
 		scale3d.p_adjust = 1;
 
-		error = device_create_file(&d->dev,
-				&dev_attr_enable_3d_scaling);
+		error = device_create_file(d, &dev_attr_enable_3d_scaling);
 		if (error)
-			dev_err(&d->dev, "failed to create sysfs attributes");
+			dev_err(d, "failed to create sysfs attributes");
 
 		scale3d.init = 1;
 	}
@@ -654,8 +644,8 @@ void nvhost_scale3d_init(struct nvhost_device *d)
 	nvhost_scale3d_reset();
 }
 
-void nvhost_scale3d_deinit(struct nvhost_device *dev)
+void nvhost_scale3d_deinit(struct device *dev, struct nvhost_module *mod)
 {
-	device_remove_file(&dev->dev, &dev_attr_enable_3d_scaling);
+	device_remove_file(dev, &dev_attr_enable_3d_scaling);
 	scale3d.init = 0;
 }

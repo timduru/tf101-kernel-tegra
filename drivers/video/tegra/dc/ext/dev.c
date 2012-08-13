@@ -27,12 +27,11 @@
 #include <video/tegra_dc_ext.h>
 
 #include <mach/dc.h>
-#include <linux/nvmap.h>
+#include <mach/nvmap.h>
 #include <mach/tegra_dc_ext.h>
 
 /* XXX ew */
 #include "../dc_priv.h"
-#include "../dc_config.h"
 /* XXX ew 2 */
 #include "../../host/dev.h"
 /* XXX ew 3 */
@@ -173,39 +172,10 @@ void tegra_dc_ext_disable(struct tegra_dc_ext *ext)
 	}
 }
 
-int tegra_dc_ext_check_windowattr(struct tegra_dc_ext *ext,
-						struct tegra_dc_win *win)
-{
-	long *addr;
-	struct tegra_dc *dc = ext->dc;
-
-	/* Check the window format */
-	addr = tegra_dc_parse_feature(dc, win->idx, GET_WIN_FORMATS);
-	if (!test_bit(win->fmt, addr)) {
-		dev_err(&dc->ndev->dev, "Color format of window %d is"
-						" invalid.\n", win->idx);
-		goto fail;
-	}
-
-	/* Check window size */
-	addr = tegra_dc_parse_feature(dc, win->idx, GET_WIN_SIZE);
-	if (CHECK_SIZE(win->out_w, addr[MIN_WIDTH], addr[MAX_WIDTH]) ||
-		CHECK_SIZE(win->out_h, addr[MIN_HEIGHT], addr[MAX_HEIGHT])) {
-		dev_err(&dc->ndev->dev, "Size of window %d is"
-						" invalid.\n", win->idx);
-		goto fail;
-	}
-
-	return 0;
-fail:
-	return -EINVAL;
-}
-
 static int tegra_dc_ext_set_windowattr(struct tegra_dc_ext *ext,
 			       struct tegra_dc_win *win,
 			       const struct tegra_dc_ext_flip_win *flip_win)
 {
-	int err = 0;
 	struct tegra_dc_ext_win *ext_win = &ext->win[win->idx];
 
 	if (flip_win->handle[TEGRA_DC_Y] == NULL) {
@@ -225,10 +195,6 @@ static int tegra_dc_ext_set_windowattr(struct tegra_dc_ext *ext,
 		win->flags |= TEGRA_WIN_FLAG_INVERT_H;
 	if (flip_win->attr.flags & TEGRA_DC_EXT_FLIP_FLAG_INVERT_V)
 		win->flags |= TEGRA_WIN_FLAG_INVERT_V;
-	if (flip_win->attr.flags & TEGRA_DC_EXT_FLIP_FLAG_GLOBAL_ALPHA)
-		win->global_alpha = flip_win->attr.global_alpha;
-	else
-		win->global_alpha = 255;
 	win->fmt = flip_win->attr.pixformat;
 	win->x.full = flip_win->attr.x;
 	win->y.full = flip_win->attr.y;
@@ -257,11 +223,6 @@ static int tegra_dc_ext_set_windowattr(struct tegra_dc_ext *ext,
 	win->stride = flip_win->attr.stride;
 	win->stride_uv = flip_win->attr.stride_uv;
 
-	err = tegra_dc_ext_check_windowattr(ext, win);
-	if (err < 0)
-		dev_err(&ext->dc->ndev->dev,
-				"Window atrributes are invalid.\n");
-
 	if ((s32)flip_win->attr.pre_syncpt_id >= 0) {
 		nvhost_syncpt_wait_timeout(
 				&nvhost_get_host(ext->dc->ndev)->syncpt,
@@ -282,9 +243,7 @@ static void tegra_dc_ext_flip_worker(struct work_struct *work)
 	struct tegra_dc_win *wins[DC_N_WINDOWS];
 	struct nvmap_handle_ref *unpin_handles[DC_N_WINDOWS *
 					       TEGRA_DC_NUM_PLANES];
-	struct nvmap_handle_ref *old_handle;
 	int i, nr_unpin = 0, nr_win = 0;
-	bool skip_flip = false;
 
 	for (i = 0; i < DC_N_WINDOWS; i++) {
 		struct tegra_dc_ext_flip_win *flip_win = &data->win[i];
@@ -298,36 +257,25 @@ static void tegra_dc_ext_flip_worker(struct work_struct *work)
 		win = tegra_dc_get_window(ext->dc, index);
 		ext_win = &ext->win[index];
 
-		if (!(atomic_dec_and_test(&ext_win->nr_pending_flips)) &&
-			(flip_win->attr.flags & TEGRA_DC_EXT_FLIP_FLAG_CURSOR))
-			skip_flip = true;
-
 		if (win->flags & TEGRA_WIN_FLAG_ENABLED) {
 			int j;
 			for (j = 0; j < TEGRA_DC_NUM_PLANES; j++) {
-				if (skip_flip)
-					old_handle = flip_win->handle[j];
-				else
-					old_handle = ext_win->cur_handle[j];
-
-				if (!old_handle)
+				if (!ext_win->cur_handle[j])
 					continue;
 
-				unpin_handles[nr_unpin++] = old_handle;
+				unpin_handles[nr_unpin++] =
+					ext_win->cur_handle[j];
 			}
 		}
 
-		if (!skip_flip)
-			tegra_dc_ext_set_windowattr(ext, win, &data->win[i]);
+		tegra_dc_ext_set_windowattr(ext, win, &data->win[i]);
 
 		wins[nr_win++] = win;
 	}
 
-	if (!skip_flip) {
-		tegra_dc_update_windows(wins, nr_win);
-		/* TODO: implement swapinterval here */
-		tegra_dc_sync_windows(wins, nr_win);
-	}
+	tegra_dc_update_windows(wins, nr_win);
+	/* TODO: implement swapinterval here */
+	tegra_dc_sync_windows(wins, nr_win);
 
 	for (i = 0; i < DC_N_WINDOWS; i++) {
 		struct tegra_dc_ext_flip_win *flip_win = &data->win[i];
@@ -536,14 +484,9 @@ static int tegra_dc_ext_flip(struct tegra_dc_ext_user *user,
 	for (i = 0; i < DC_N_WINDOWS; i++) {
 		u32 syncpt_max;
 		int index = args->win[i].index;
-		struct tegra_dc_win *win;
-		struct tegra_dc_ext_win *ext_win;
 
 		if (index < 0)
 			continue;
-
-		win = tegra_dc_get_window(ext->dc, index);
-		ext_win = &ext->win[index];
 
 		syncpt_max = tegra_dc_incr_syncpt_max(ext->dc, index);
 
@@ -556,8 +499,6 @@ static int tegra_dc_ext_flip(struct tegra_dc_ext_user *user,
 		args->post_syncpt_val = syncpt_max;
 		args->post_syncpt_id = tegra_dc_get_syncpt_id(ext->dc, index);
 		work_index = index;
-
-		atomic_inc(&ext->win[work_index].nr_pending_flips);
 	}
 	queue_work(ext->win[work_index].flip_wq, &data->work);
 

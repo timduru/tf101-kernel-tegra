@@ -22,12 +22,8 @@
 
 #include <linux/io.h>
 
-#include "bus.h"
 #include "dev.h"
 #include "debug.h"
-#include "nvhost_acm.h"
-#include "nvhost_channel.h"
-#include "chip_support.h"
 
 pid_t nvhost_debug_null_kickoff_pid;
 unsigned int nvhost_debug_trace_cmdbuf;
@@ -47,45 +43,37 @@ void nvhost_debug_output(struct output *o, const char* fmt, ...)
 	o->fn(o->ctx, o->buf, len);
 }
 
-static int show_channels(struct device *dev, void *data)
+
+static void show_channels(struct nvhost_master *m, struct output *o)
 {
-	struct nvhost_channel *ch;
-	struct nvhost_device *nvdev = to_nvhost_device(dev);
-	struct output *o = data;
-	struct nvhost_master *m;
-
-	if (nvdev == NULL)
-		return 0;
-
-	m = nvhost_get_host(nvdev);
-	ch = nvdev->channel;
-	if (ch) {
+	int i;
+	nvhost_debug_output(o, "---- channels ----\n");
+	for (i = 0; i < m->nb_channels; i++) {
+		struct nvhost_channel *ch = &m->channels[i];
 		mutex_lock(&ch->reflock);
 		if (ch->refcount) {
 			mutex_lock(&ch->cdma.lock);
-			nvhost_get_chip_ops()->debug.show_channel_fifo(m, ch, o, nvdev->index);
-			nvhost_get_chip_ops()->debug.show_channel_cdma(m, ch, o, nvdev->index);
+			m->op.debug.show_channel_fifo(m, o, i);
+			m->op.debug.show_channel_cdma(m, o, i);
 			mutex_unlock(&ch->cdma.lock);
 		}
 		mutex_unlock(&ch->reflock);
 	}
-
-	return 0;
 }
+
 
 static void show_syncpts(struct nvhost_master *m, struct output *o)
 {
 	int i;
-	BUG_ON(!nvhost_get_chip_ops()->syncpt.name);
+	BUG_ON(!m->op.syncpt.name);
 	nvhost_debug_output(o, "---- syncpts ----\n");
 	for (i = 0; i < m->syncpt.nb_pts; i++) {
 		u32 max = nvhost_syncpt_read_max(&m->syncpt, i);
-		u32 min = nvhost_syncpt_update_min(&m->syncpt, i);
-		if (!min && !max)
+		if (!max)
 			continue;
 		nvhost_debug_output(o, "id %d (%s) min %d max %d\n",
-				i, nvhost_get_chip_ops()->syncpt.name(&m->syncpt, i),
-				min, max);
+				    i, m->op.syncpt.name(&m->syncpt, i),
+			nvhost_syncpt_update_min(&m->syncpt, i), max);
 	}
 
 	for (i = 0; i < m->syncpt.nb_bases; i++) {
@@ -101,15 +89,15 @@ static void show_syncpts(struct nvhost_master *m, struct output *o)
 
 static void show_all(struct nvhost_master *m, struct output *o)
 {
-	nvhost_module_busy(m->dev);
+	nvhost_module_busy(&m->mod);
 
-	nvhost_get_chip_ops()->debug.show_mlocks(m, o);
+	m->op.debug.show_mlocks(m, o);
 	show_syncpts(m, o);
-	nvhost_debug_output(o, "---- channels ----\n");
-	bus_for_each_dev(&(nvhost_bus_get())->nvhost_bus_type, NULL, o, show_channels);
+	show_channels(m, o);
 
-	nvhost_module_idle(m->dev);
+	nvhost_module_idle(&m->mod);
 }
+
 
 #ifdef CONFIG_DEBUG_FS
 static int nvhost_debug_show(struct seq_file *s, void *unused)
@@ -146,8 +134,8 @@ void nvhost_debug_init(struct nvhost_master *master)
 	debugfs_create_u32("trace_cmdbuf", S_IRUGO|S_IWUSR, de,
 			&nvhost_debug_trace_cmdbuf);
 
-	if (nvhost_get_chip_ops()->debug.debug_init)
-		nvhost_get_chip_ops()->debug.debug_init(de);
+	if (master->op.debug.debug_init)
+		master->op.debug.debug_init(de);
 
 	debugfs_create_u32("force_timeout_pid", S_IRUGO|S_IWUSR, de,
 			&nvhost_debug_force_timeout_pid);
