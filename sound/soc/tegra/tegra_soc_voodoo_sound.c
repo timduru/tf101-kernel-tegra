@@ -29,7 +29,6 @@
  *
 */
 
-
 #include <../../../include/asm-generic/int-ll64.h>
 #include <linux/miscdevice.h>
 #include <linux/delay.h>
@@ -94,7 +93,7 @@ static ssize_t headphone_amplifier_level_show(struct device *dev,
 					      struct device_attribute *attr,
 					      char *buf)
 {
-	return sprintf(buf, "%u\n", *audio_params[DEVICEID].analog_headset_volume); // FK
+	return sprintf(buf, "%u\n", audio_params[DEVICEID].analog_headset_volume); // FK
 }
 
 static ssize_t headphone_amplifier_level_store(struct device *dev,
@@ -125,7 +124,7 @@ static ssize_t voodoo_sound_hardware(struct device *dev,
 				     struct device_attribute *attr, char *buf)
 {
 	return sprintf(buf, "WM%X\n",
-		       snd_soc_read(*global_codec, WM8903_SW_RESET_AND_ID)); //FK
+		       snd_soc_read(global_codec, WM8903_SW_RESET_AND_ID)); //FK
 }
 
 static DEVICE_ATTR(headphone_amplifier_level, S_IRUGO | S_IWUGO,
