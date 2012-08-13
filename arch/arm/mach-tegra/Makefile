@@ -123,13 +123,13 @@ obj-${CONFIG_MACH_TRIMSLICE}            += board-trimslice-pinmux.o
 
 obj-${CONFIG_MACH_P852}                 += p852/
 
-# obj-${CONFIG_MACH_TF101}                += board-tf101.o
-# obj-${CONFIG_MACH_TF101}                += board-tf101-pinmux.o
-# obj-${CONFIG_MACH_TF101}                += board-tf101-sdhci.o
-# obj-${CONFIG_MACH_TF101}                += board-tf101-power.o
-# obj-${CONFIG_MACH_TF101}                += board-tf101-panel.o
-# obj-${CONFIG_MACH_TF101}                += board-tf101-sensors.o
-# obj-${CONFIG_MACH_TF101}                += board-tf101-memory.o
+obj-${CONFIG_MACH_TF101}                += board-tf101.o
+obj-${CONFIG_MACH_TF101}                += board-tf101-pinmux.o
+obj-${CONFIG_MACH_TF101}                += board-tf101-sdhci.o
+obj-${CONFIG_MACH_TF101}                += board-tf101-power.o
+obj-${CONFIG_MACH_TF101}                += board-tf101-panel.o
+obj-${CONFIG_MACH_TF101}                += board-tf101-sensors.o
+obj-${CONFIG_MACH_TF101}                += board-tf101-memory.o
 
 obj-${CONFIG_MACH_VENTANA}              += board-ventana.o
 obj-${CONFIG_MACH_VENTANA}              += board-ventana-pinmux.o

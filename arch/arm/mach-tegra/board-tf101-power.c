@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2012 NVIDIA, Inc.
+ * Copyright (C) 2010-2011 NVIDIA, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -24,7 +24,6 @@
 #include <linux/gpio.h>
 #include <linux/io.h>
 #include <linux/power/gpio-charger.h>
-#include <linux/regulator/fixed.h>
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
@@ -36,14 +35,14 @@
 #include "pm.h"
 #include "wakeups-t2.h"
 #include "board.h"
-#include "board-ventana.h"
+#include "board-tf101.h"
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
 
 #define CHARGING_DISABLE	TEGRA_GPIO_PR6
 
-int __init ventana_charge_init(void)
+int __init tf101_charge_init(void)
 {
 	gpio_request(CHARGING_DISABLE, "chg_disable");
 	gpio_direction_output(CHARGING_DISABLE, 0);
@@ -90,10 +89,11 @@ static struct regulator_consumer_supply tps658621_ldo5_supply[] = {
 static struct regulator_consumer_supply tps658621_ldo6_supply[] = {
 	REGULATOR_SUPPLY("vdd_ldo6", NULL),
 	REGULATOR_SUPPLY("vcsi", "tegra_camera"),
+	REGULATOR_SUPPLY("vcsi", NULL),
 	REGULATOR_SUPPLY("vdd_dmic", "tegra-snd-wm8903.0"),
 	REGULATOR_SUPPLY("vdd_i2c", "3-0030"),
-	REGULATOR_SUPPLY("dvdd", "6-0072"),
-	REGULATOR_SUPPLY("dvdd", "7-0072"),
+	REGULATOR_SUPPLY("vdd_i2c", "6-0072"),
+	REGULATOR_SUPPLY("vdd_i2c", "7-0072"),
 };
 static struct regulator_consumer_supply tps658621_ldo7_supply[] = {
 	REGULATOR_SUPPLY("vdd_ldo7", NULL),
@@ -155,10 +155,10 @@ static struct regulator_init_data ldo2_data = REGULATOR_INIT(ldo2, 725, 1500, OF
 static struct regulator_init_data ldo3_data = REGULATOR_INIT(ldo3, 1250, 3300, OFF, NULL);
 static struct regulator_init_data ldo4_data = REGULATOR_INIT(ldo4, 1700, 2475, ON, NULL);
 static struct regulator_init_data ldo5_data = REGULATOR_INIT(ldo5, 1250, 3300, ON, NULL);
-static struct regulator_init_data ldo6_data = REGULATOR_INIT(ldo6, 1800, 1800, OFF, NULL);
+static struct regulator_init_data ldo6_data = REGULATOR_INIT(ldo6, 1250, 1800, OFF, NULL);
 static struct regulator_init_data ldo7_data = REGULATOR_INIT(ldo7, 1250, 3300, OFF, NULL);
 static struct regulator_init_data ldo8_data = REGULATOR_INIT(ldo8, 1250, 3300, OFF, NULL);
-static struct regulator_init_data ldo9_data = REGULATOR_INIT(ldo9, 1250, 3300, ON, NULL);
+static struct regulator_init_data ldo9_data = REGULATOR_INIT(ldo9, 1250, 3300, OFF, NULL);
 
 static struct tps6586x_rtc_platform_data rtc_data = {
 	.irq = TEGRA_NR_IRQS + TPS6586X_INT_RTC_ALM1,
@@ -206,7 +206,7 @@ static struct tps6586x_platform_data tps_platform = {
 	.use_power_off = true,
 };
 
-static struct i2c_board_info __initdata ventana_regulators[] = {
+static struct i2c_board_info __initdata tf101_regulators[] = {
 	{
 		I2C_BOARD_INFO("tps6586x", 0x34),
 		.irq		= INT_EXTERNAL_PMU,
@@ -214,19 +214,19 @@ static struct i2c_board_info __initdata ventana_regulators[] = {
 	},
 };
 
-static void ventana_board_suspend(int lp_state, enum suspend_stage stg)
+static void tf101_board_suspend(int lp_state, enum suspend_stage stg)
 {
 	if ((lp_state == TEGRA_SUSPEND_LP1) && (stg == TEGRA_SUSPEND_BEFORE_CPU))
 		tegra_console_uart_suspend();
 }
 
-static void ventana_board_resume(int lp_state, enum resume_stage stg)
+static void tf101_board_resume(int lp_state, enum resume_stage stg)
 {
 	if ((lp_state == TEGRA_SUSPEND_LP1) && (stg == TEGRA_RESUME_AFTER_CPU))
 		tegra_console_uart_resume();
 }
 
-static struct tegra_suspend_platform_data ventana_suspend_data = {
+static struct tegra_suspend_platform_data tf101_suspend_data = {
 	/*
 	 * Check power on time and crystal oscillator start time
 	 * for appropriate settings.
@@ -238,36 +238,11 @@ static struct tegra_suspend_platform_data ventana_suspend_data = {
 	.core_off_timer = 0xf,
 	.corereq_high	= false,
 	.sysclkreq_high	= true,
-	.board_suspend = ventana_board_suspend,
-	.board_resume = ventana_board_resume,
+	.board_suspend = tf101_board_suspend,
+	.board_resume = tf101_board_resume,
 };
 
-static struct regulator_consumer_supply pnl_pwr_consumer_supply[] = {
-	REGULATOR_SUPPLY("pnl_pwr", NULL),
-};
-
-FIXED_VOLTAGE_REG_INIT(2, pnl_pwr, 2800000, PANEL_POWER_EN_GPIO,
-				0, 1, 0, REGULATOR_CHANGE_STATUS, 0);
-
-static struct platform_device *fixed_voltage_regulators[] __initdata = {
-	ADD_FIXED_VOLTAGE_REG(pnl_pwr),
-};
-
-int __init ventana_fixed_voltage_regulator_init(void)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(fixed_voltage_regulators); ++i) {
-		struct fixed_voltage_config *fixed_voltage_regulators_pdata =
-				fixed_voltage_regulators[i]->dev.platform_data;
-		if (fixed_voltage_regulators_pdata->gpio < TEGRA_NR_GPIOS)
-			tegra_gpio_enable(fixed_voltage_regulators_pdata->gpio);
-	}
-	return platform_add_devices(fixed_voltage_regulators,
-				ARRAY_SIZE(fixed_voltage_regulators));
-}
-
-int __init ventana_regulator_init(void)
+int __init tf101_regulator_init(void)
 {
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	void __iomem *chip_id = IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x804;
@@ -277,52 +252,50 @@ int __init ventana_regulator_init(void)
 	minor = (readl(chip_id) >> 16) & 0xf;
 	/* A03 (but not A03p) chips do not support LP0 */
 	if (minor == 3 && !(tegra_spare_fuse(18) || tegra_spare_fuse(19)))
-		ventana_suspend_data.suspend_mode = TEGRA_SUSPEND_LP1;
+		tf101_suspend_data.suspend_mode = TEGRA_SUSPEND_LP1;
 
 	/* configure the power management controller to trigger PMU
 	 * interrupts when low */
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
 
-	i2c_register_board_info(4, ventana_regulators, 1);
+	i2c_register_board_info(4, tf101_regulators, 1);
 
-//	regulator_has_full_constraints();
+	//regulator_has_full_constraints();
 
-	tegra_init_suspend(&ventana_suspend_data);
-
-	ventana_fixed_voltage_regulator_init();
+	tegra_init_suspend(&tf101_suspend_data);
 
 	return 0;
 }
 
-static char *ventana_battery[] = {
+static char *tf101_battery[] = {
 	"battery",
 };
 
-static struct gpio_charger_platform_data ventana_charger_pdata = {
+static struct gpio_charger_platform_data tf101_charger_pdata = {
 	.name = "ac",
 	.type = POWER_SUPPLY_TYPE_MAINS,
 	.gpio = AC_PRESENT_GPIO,
 	.gpio_active_low = 1,
-	.supplied_to = ventana_battery,
-	.num_supplicants = ARRAY_SIZE(ventana_battery),
+	.supplied_to = tf101_battery,
+	.num_supplicants = ARRAY_SIZE(tf101_battery),
 };
 
-static struct platform_device ventana_charger_device = {
+static struct platform_device tf101_charger_device = {
 	.name = "gpio-charger",
 	.dev = {
-		.platform_data = &ventana_charger_pdata,
+		.platform_data = &tf101_charger_pdata,
 	},
 };
 
-int __init ventana_charger_init(void)
+int __init tf101_charger_init(void)
 {
 	tegra_gpio_enable(AC_PRESENT_GPIO);
-	platform_device_register(&ventana_charger_device);
+	platform_device_register(&tf101_charger_device);
 	return 0;
 }
 
-static int __init ventana_pcie_init(void)
+static int __init tf101_pcie_init(void)
 {
 	int ret;
 
@@ -346,28 +319,4 @@ fail:
 	return ret;
 }
 
-static struct regulator_consumer_supply cam1_2v8_consumer_supply[] = {
-	REGULATOR_SUPPLY("cam1_2v8", NULL),
-};
-
-static struct regulator_consumer_supply cam2_2v8_consumer_supply[] = {
-	REGULATOR_SUPPLY("cam2_2v8", NULL),
-};
-
-FIXED_VOLTAGE_REG_INIT(0, cam1_2v8, 2800000, CAM1_LDO_SHUTDN_L_GPIO,
-				0, 1, 0, REGULATOR_CHANGE_STATUS, 0);
-FIXED_VOLTAGE_REG_INIT(1, cam2_2v8, 2800000, CAM2_LDO_SHUTDN_L_GPIO,
-				0, 1, 0, REGULATOR_CHANGE_STATUS, 0);
-
-static struct platform_device *cam_fixed_voltage_regulators[] __initdata = {
-	ADD_FIXED_VOLTAGE_REG(cam1_2v8),
-	ADD_FIXED_VOLTAGE_REG(cam2_2v8),
-};
-
-int __init ventana_cam_fixed_voltage_regulator_init(void)
-{
-	return platform_add_devices(cam_fixed_voltage_regulators,
-				ARRAY_SIZE(cam_fixed_voltage_regulators));
-}
-
-late_initcall(ventana_pcie_init);
+late_initcall(tf101_pcie_init);
