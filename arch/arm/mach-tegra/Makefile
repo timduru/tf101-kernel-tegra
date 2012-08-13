@@ -1,16 +1,17 @@
 GCOV_PROFILE := y
 
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += ahb.o
+obj-y                                   += ahb.o
 obj-y                                   += apbio.o
 obj-y                                   += common.o
+obj-y                                   += board-info.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += common-t2.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += common-t3.o
 obj-y                                   += io.o
 obj-y                                   += irq.o
-obj-$(CONFIG_TEGRA_GRHOST)              += syncpt.o
 obj-y                                   += clock.o
 obj-y                                   += clock-common.o
 obj-y                                   += timer.o
+obj-y                                   += timerinfo.o
 ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
 obj-y                                   += tegra2_clocks.o
 obj-y                                   += timer-t2.o
@@ -34,11 +35,11 @@ obj-y                                   += kfuse.o
 obj-y                                   += csi.o
 obj-$(CONFIG_TEGRA_SILICON_PLATFORM)    += tegra_odm_fuses.o
 obj-y                                   += i2c_error_recovery.o
-obj-$(CONFIG_TEGRA_LEGACY_AUDIO)        += tegra_i2s_audio.o
-obj-$(CONFIG_TEGRA_LEGACY_AUDIO)        += tegra_spdif_audio.o
 obj-y                                   += mc.o
 obj-$(CONFIG_TEGRA_STAT_MON)            += tegra2_statmon.o
 obj-$(CONFIG_USB_SUPPORT)               += usb_phy.o
+obj-$(CONFIG_USB_SUPPORT)               += tegra3_usb_phy.o
+obj-$(CONFIG_USB_SUPPORT)               += tegra2_usb_phy.o
 obj-$(CONFIG_FIQ)                       += fiq.o
 obj-$(CONFIG_TEGRA_FIQ_DEBUGGER)        += tegra_fiq_debugger.o
 obj-$(CONFIG_TEGRA_PWM)                 += pwm.o
@@ -130,15 +131,6 @@ obj-${CONFIG_MACH_VENTANA}              += board-ventana-panel.o
 obj-${CONFIG_MACH_VENTANA}              += board-ventana-sensors.o
 obj-${CONFIG_MACH_VENTANA}              += board-ventana-memory.o
 
-obj-${CONFIG_MACH_TF101}                += board-tf101.o
-obj-${CONFIG_MACH_TF101}                += board-tf101-pinmux.o
-obj-${CONFIG_MACH_TF101}                += board-tf101-sdhci.o
-obj-${CONFIG_MACH_TF101}                += board-tf101-power.o
-obj-${CONFIG_MACH_TF101}                += board-tf101-panel.o
-obj-${CONFIG_MACH_TF101}                += board-tf101-sensors.o
-obj-${CONFIG_MACH_TF101}                += board-tf101-memory.o
-obj-${CONFIG_MACH_TF101}                += board-tf101-sysfs.o
-
 obj-${CONFIG_MACH_ARUBA}                += board-aruba.o
 obj-${CONFIG_MACH_ARUBA}                += board-aruba-panel.o
 obj-${CONFIG_MACH_ARUBA}                += board-aruba-pinmux.o
@@ -169,7 +161,7 @@ obj-${CONFIG_MACH_CARDHU}               += board-cardhu-memory.o
 obj-${CONFIG_MACH_CARDHU}               += board-cardhu-powermon.o
 
 obj-${CONFIG_MACH_KAI}                  += board-touch-kai-synaptics-spi.o
-obj-${CONFIG_MACH_KAI}                  += board-touch-kai-raydium_spi.o
+obj-y                                   += board-touch-raydium_spi.o
 
 obj-${CONFIG_MACH_P1852}               += board-p1852.o
 obj-${CONFIG_MACH_P1852}               += board-p1852-panel.o
@@ -194,6 +186,7 @@ obj-${CONFIG_MACH_KAI}                  += board-kai-pinmux.o
 obj-${CONFIG_MACH_KAI}                  += board-kai-power.o
 obj-${CONFIG_MACH_KAI}                  += board-kai-sdhci.o
 obj-${CONFIG_MACH_KAI}                  += board-kai-sensors.o
+obj-y                                   += eeprom-wifi-mac.o
 
 obj-${CONFIG_TEGRA_BB_XMM_POWER}        += baseband-xmm-power.o
 obj-${CONFIG_TEGRA_BB_XMM_POWER2}       += baseband-xmm-power2.o

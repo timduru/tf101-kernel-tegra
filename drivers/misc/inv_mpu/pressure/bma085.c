@@ -1,20 +1,20 @@
 /*
- $License:
-    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
+	$License:
+	Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-  $
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	$
  */
 
 /**
@@ -44,12 +44,9 @@
 #include "mlsl.h"
 #include "log.h"
 
-/* --------------------- */
-/* -    Variables.     - */
-/* --------------------- */
-
-/** this structure holds all device specific calibration parameters
-*/
+/*
+ * this structure holds all device specific calibration parameters
+ */
 struct bmp085_calibration_param_t {
 	short ac1;
 	short ac2;
@@ -72,8 +69,8 @@ struct bmp085_calibration_param_t cal_param;
 #define PRESSURE_BMA085_PARAM_MI      3791        /* calibration parameter */
 
 /*********************************************
-    Pressure Initialization Functions
-**********************************************/
+ *    Pressure Initialization Functions
+ *********************************************/
 
 static int bma085_suspend(void *mlsl_handle,
 			  struct ext_slave_descr *slave,

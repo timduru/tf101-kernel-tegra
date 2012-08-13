@@ -1,20 +1,20 @@
 /*
- $License:
-    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
+	$License:
+	Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-  $
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	$
  */
 
 /**
@@ -73,8 +73,8 @@
 struct ami306_private_data {
 	int isstandby;
 	unsigned char fine[3];
-	AMI_SENSOR_PARAMETOR param;
-	AMI_WIN_PARAMETER win;
+	struct ami_sensor_parametor param;
+	struct ami_win_parameter win;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -268,7 +268,7 @@ static int ami306_read_param(void *mlsl_handle,
 	int result = 0;
 	unsigned char regs[12];
 	struct ami306_private_data *private_data = pdata->private_data;
-	AMI_SENSOR_PARAMETOR *param = &private_data->param;
+	struct ami_sensor_parametor *param = &private_data->param;
 
 	result = inv_serial_read(mlsl_handle, pdata->address,
 				 AMI_REG_SENX, sizeof(regs), regs);
@@ -496,7 +496,7 @@ static int ami306_search_offset(void *mlsl_handle,
 		}
 	}
 	memcpy(private_data->fine, fine, sizeof(fine));
- out:
+out:
 	result = ami306_set_bits8(mlsl_handle, pdata,
 				  AMI_REG_CTRL3, AMI_CTRL3_SRST_BIT);
 	if (result) {
@@ -514,7 +514,7 @@ static int ami306_read_win(void *mlsl_handle,
 	int result = 0;
 	unsigned char regs[6];
 	struct ami306_private_data *private_data = pdata->private_data;
-	AMI_WIN_PARAMETER *win = &private_data->win;
+	struct ami_win_parameter *win = &private_data->win;
 
 	result = inv_serial_read(mlsl_handle, pdata->address,
 				 AMI_REG_OFFOTPX, sizeof(regs), regs);
@@ -765,7 +765,7 @@ static int ami306_get_config(void *mlsl_handle,
 
 	switch (data->key) {
 	case MPU_SLAVE_PARAM:
-		if (sizeof(AMI_SENSOR_PARAMETOR) > data->len) {
+		if (sizeof(struct ami_sensor_parametor) > data->len) {
 			LOG_RESULT_LOCATION(INV_ERROR_INVALID_PARAMETER);
 			return INV_ERROR_INVALID_PARAMETER;
 		}
@@ -777,10 +777,10 @@ static int ami306_get_config(void *mlsl_handle,
 			}
 		}
 		memcpy(data->data, &private_data->param,
-		       sizeof(AMI_SENSOR_PARAMETOR));
+		       sizeof(struct ami_sensor_parametor));
 		break;
 	case MPU_SLAVE_WINDOW:
-		if (sizeof(AMI_WIN_PARAMETER) > data->len) {
+		if (sizeof(struct ami_win_parameter) > data->len) {
 			LOG_RESULT_LOCATION(INV_ERROR_INVALID_PARAMETER);
 			return INV_ERROR_INVALID_PARAMETER;
 		}
@@ -792,10 +792,10 @@ static int ami306_get_config(void *mlsl_handle,
 			}
 		}
 		memcpy(data->data, &private_data->win,
-		       sizeof(AMI_WIN_PARAMETER));
+		       sizeof(struct ami_win_parameter));
 		break;
 	case MPU_SLAVE_SEARCHOFFSET:
-		if (sizeof(AMI_WIN_PARAMETER) > data->len) {
+		if (sizeof(struct ami_win_parameter) > data->len) {
 			LOG_RESULT_LOCATION(INV_ERROR_INVALID_PARAMETER);
 			return INV_ERROR_INVALID_PARAMETER;
 		}
@@ -819,10 +819,10 @@ static int ami306_get_config(void *mlsl_handle,
 			}
 		}
 		memcpy(data->data, &private_data->win,
-		       sizeof(AMI_WIN_PARAMETER));
+		       sizeof(struct ami_win_parameter));
 		break;
 	case MPU_SLAVE_READWINPARAMS:
-		if (sizeof(AMI_WIN_PARAMETER) > data->len) {
+		if (sizeof(struct ami_win_parameter) > data->len) {
 			LOG_RESULT_LOCATION(INV_ERROR_INVALID_PARAMETER);
 			return INV_ERROR_INVALID_PARAMETER;
 		}
@@ -846,7 +846,7 @@ static int ami306_get_config(void *mlsl_handle,
 			}
 		}
 		memcpy(data->data, &private_data->win,
-		       sizeof(AMI_WIN_PARAMETER));
+		       sizeof(struct ami_win_parameter));
 		break;
 	case MPU_SLAVE_CONFIG_ODR_SUSPEND:
 		(*(unsigned long *)data->data) = 0;

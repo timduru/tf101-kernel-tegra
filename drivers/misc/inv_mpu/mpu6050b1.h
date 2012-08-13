@@ -1,20 +1,20 @@
 /*
- $License:
-    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
+	$License:
+	Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-  $
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	$
  */
 
 /**
@@ -33,7 +33,6 @@
 #ifndef __MPU6050B1_H_
 #define __MPU6050B1_H_
 
-#error Invalid or undefined CONFIG_MPU_SENSORS_MPUxxxx
 
 #define MPU_NAME "mpu6050B1"
 #define DEFAULT_MPU_SLAVEADDR		0x68
@@ -52,7 +51,7 @@ enum {
 	MPUREG_YA_OFFS_L,			/* 0x09,   9 */
 	MPUREG_ZA_OFFS_H,			/* 0x0a,  10 */
 	MPUREG_ZA_OFFS_L,			/* 0x0B,  11 */
-	MPUREG_PRODUCT_ID,				/* 0x0c,  12 */
+	MPUREG_PRODUCT_ID,			/* 0x0c,  12 */
 	MPUREG_0D_RSVD,				/* 0x0d,  13 */
 	MPUREG_0E_RSVD,				/* 0x0e,  14 */
 	MPUREG_0F_RSVD,				/* 0x0f,  15 */
@@ -326,7 +325,11 @@ enum MPU_MEMORY_BANKS {
 #define BIT_PD_PTAT				0x08
 #define BITS_CLKSEL				0x07
 /*---- MPU6050B1 'PWR_MGMT_2' register (6C) ----*/
-#define BITS_LPA_WAKE_CTRL			0xC0
+#define	BITS_LPA_WAKE_CTRL			0xC0
+#define	BITS_LPA_WAKE_1HZ			0x00
+#define	BITS_LPA_WAKE_2HZ			0x40
+#define	BITS_LPA_WAKE_10HZ			0x80
+#define	BITS_LPA_WAKE_40HZ			0xC0
 #define	BIT_STBY_XA				0x20
 #define	BIT_STBY_YA				0x10
 #define	BIT_STBY_ZA				0x08

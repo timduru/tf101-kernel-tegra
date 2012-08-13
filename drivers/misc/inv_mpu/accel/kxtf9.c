@@ -1,20 +1,20 @@
 /*
- $License:
-    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
+	$License:
+	Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-  $
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	$
  */
 
 /**
@@ -94,7 +94,7 @@
 /* -------------------------------------------------------------------------- */
 
 struct kxtf9_config {
-	unsigned int odr;	/* Output data rate mHz */
+	unsigned long odr;	/* Output data rate mHz */
 	unsigned int fsr;	/* full scale range mg */
 	unsigned int ths;	/* Motion no-motion thseshold mg */
 	unsigned int dur;	/* Motion no-motion duration ms */
@@ -118,7 +118,7 @@ static int kxtf9_set_ths(void *mlsl_handle,
 {
 	int result = INV_SUCCESS;
 	if ((ths * KXTF9_THS_COUNTS_P_G / 1000) > KXTF9_MAX_THS)
-		ths = (KXTF9_MAX_THS * 1000) / KXTF9_THS_COUNTS_P_G;
+		ths = (long)(KXTF9_MAX_THS * 1000) / KXTF9_THS_COUNTS_P_G;
 
 	if (ths < 0)
 		ths = 0;
@@ -139,7 +139,7 @@ static int kxtf9_set_dur(void *mlsl_handle,
 			 struct kxtf9_config *config, int apply, long dur)
 {
 	int result = INV_SUCCESS;
-	long reg_dur = (dur * config->odr) / 1000000;
+	long reg_dur = (dur * config->odr) / 1000000L;
 	config->dur = dur;
 
 	if (reg_dur > KXTF9_MAX_DUR)
@@ -227,17 +227,17 @@ static int kxtf9_set_odr(void *mlsl_handle,
 
 	/* Data sheet says there is 12.5 hz, but that seems to produce a single
 	 * correct data value, thus we remove it from the table */
-	if (odr > 400000) {
-		config->odr = 800000;
+	if (odr > 400000L) {
+		config->odr = 800000L;
 		bits = 0x06;
-	} else if (odr > 200000) {
-		config->odr = 400000;
+	} else if (odr > 200000L) {
+		config->odr = 400000L;
 		bits = 0x05;
-	} else if (odr > 100000) {
-		config->odr = 200000;
+	} else if (odr > 100000L) {
+		config->odr = 200000L;
 		bits = 0x04;
 	} else if (odr > 50000) {
-		config->odr = 100000;
+		config->odr = 100000L;
 		bits = 0x03;
 	} else if (odr > 25000) {
 		config->odr = 50000;
@@ -257,7 +257,7 @@ static int kxtf9_set_odr(void *mlsl_handle,
 
 	config->reg_odr = bits;
 	kxtf9_set_dur(mlsl_handle, pdata, config, apply, config->dur);
-	MPL_LOGV("ODR: %d, 0x%02x\n", config->odr, (int)config->ctrl_reg1);
+	MPL_LOGV("ODR: %ld, 0x%02x\n", config->odr, (int)config->ctrl_reg1);
 	if (apply) {
 		result = inv_serial_single_write(mlsl_handle, pdata->address,
 						 KXTF9_DATA_CTRL_REG,
@@ -487,61 +487,61 @@ static int kxtf9_init(void *mlsl_handle,
 	private_data->suspend.ctrl_reg1 = 0x40;
 
 	result = kxtf9_set_dur(mlsl_handle, pdata, &private_data->suspend,
-			       FALSE, 1000);
+			       false, 1000);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
 	}
 	result = kxtf9_set_dur(mlsl_handle, pdata, &private_data->resume,
-			       FALSE, 2540);
+			       false, 2540);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
 	}
 
 	result = kxtf9_set_odr(mlsl_handle, pdata, &private_data->suspend,
-			       FALSE, 50000);
+			       false, 50000);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
 	}
 	result = kxtf9_set_odr(mlsl_handle, pdata, &private_data->resume,
-			       FALSE, 200000);
+			       false, 200000L);
 
 	result = kxtf9_set_fsr(mlsl_handle, pdata, &private_data->suspend,
-			       FALSE, 2000);
+			       false, 2000);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
 	}
 	result = kxtf9_set_fsr(mlsl_handle, pdata, &private_data->resume,
-			       FALSE, 2000);
+			       false, 2000);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
 	}
 
 	result = kxtf9_set_ths(mlsl_handle, pdata, &private_data->suspend,
-			       FALSE, 80);
+			       false, 80);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
 	}
 	result = kxtf9_set_ths(mlsl_handle, pdata, &private_data->resume,
-			       FALSE, 40);
+			       false, 40);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
 	}
 
 	result = kxtf9_set_irq(mlsl_handle, pdata, &private_data->suspend,
-			       FALSE, MPU_SLAVE_IRQ_TYPE_NONE);
+			       false, MPU_SLAVE_IRQ_TYPE_NONE);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
 	}
 	result = kxtf9_set_irq(mlsl_handle, pdata, &private_data->resume,
-			       FALSE, MPU_SLAVE_IRQ_TYPE_NONE);
+			       false, MPU_SLAVE_IRQ_TYPE_NONE);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
@@ -706,7 +706,7 @@ static struct ext_slave_descr kxtf9_descr = {
 	.config           = kxtf9_config,
 	.get_config       = kxtf9_get_config,
 	.name             = "kxtf9",
-	.type             = EXT_SLAVE_TYPE_ACCELEROMETER,
+	.type             = EXT_SLAVE_TYPE_ACCEL,
 	.id               = ACCEL_ID_KXTF9,
 	.read_reg         = 0x06,
 	.read_len         = 6,

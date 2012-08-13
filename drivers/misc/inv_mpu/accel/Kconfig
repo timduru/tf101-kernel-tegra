@@ -12,7 +12,7 @@ if INV_SENSORS_ACCELEROMETERS
 
 config MPU_SENSORS_ADXL34X
 	tristate "ADI adxl34x"
-	depends on MPU_SENSORS_MPU3050
+	depends on MPU_SENSORS_MPU3050 || MPU_SENSORS_MPU6050B1 || MPU_SENSORS_MPU6050A2
 	help
 	  This enables support for the ADI adxl345 or adxl346 accelerometers.
 	  This support is for integration with the MPU3050 gyroscope device
@@ -22,7 +22,7 @@ config MPU_SENSORS_ADXL34X
 
 config MPU_SENSORS_BMA222
 	tristate "Bosch BMA222"
-	depends on MPU_SENSORS_MPU3050
+	depends on MPU_SENSORS_MPU3050 || MPU_SENSORS_MPU6050B1 || MPU_SENSORS_MPU6050A2
 	help
 	  This enables support for the Bosch BMA222 accelerometer
 	  This support is for integration with the MPU3050 gyroscope device
@@ -32,7 +32,7 @@ config MPU_SENSORS_BMA222
 
 config MPU_SENSORS_BMA150
 	tristate "Bosch BMA150"
-	depends on MPU_SENSORS_MPU3050
+	depends on MPU_SENSORS_MPU3050 || MPU_SENSORS_MPU6050B1 || MPU_SENSORS_MPU6050A2
 	help
 	  This enables support for the Bosch BMA150 accelerometer
 	  This support is for integration with the MPU3050 gyroscope device
@@ -42,7 +42,7 @@ config MPU_SENSORS_BMA150
 
 config MPU_SENSORS_BMA250
 	tristate "Bosch BMA250"
-	depends on MPU_SENSORS_MPU3050
+	depends on MPU_SENSORS_MPU3050 || MPU_SENSORS_MPU6050B1 || MPU_SENSORS_MPU6050A2
 	help
 	  This enables support for the Bosch BMA250 accelerometer
 	  This support is for integration with the MPU3050 gyroscope device
@@ -52,7 +52,7 @@ config MPU_SENSORS_BMA250
 
 config MPU_SENSORS_KXSD9
 	tristate "Kionix KXSD9"
-	depends on MPU_SENSORS_MPU3050
+	depends on MPU_SENSORS_MPU3050 || MPU_SENSORS_MPU6050B1 || MPU_SENSORS_MPU6050A2
 	help
 	  This enables support for the Kionix KXSD9 accelerometer
 	  This support is for integration with the MPU3050 gyroscope device
@@ -62,7 +62,7 @@ config MPU_SENSORS_KXSD9
 
 config MPU_SENSORS_KXTF9
 	tristate "Kionix KXTF9"
-	depends on MPU_SENSORS_MPU3050
+	depends on MPU_SENSORS_MPU3050 || MPU_SENSORS_MPU6050B1 || MPU_SENSORS_MPU6050A2
 	help
 	  This enables support for the Kionix KXFT9 accelerometer
 	  This support is for integration with the MPU3050 gyroscope device
@@ -72,7 +72,7 @@ config MPU_SENSORS_KXTF9
 
 config MPU_SENSORS_LIS331DLH
 	tristate "ST lis331dlh"
-	depends on MPU_SENSORS_MPU3050
+	depends on MPU_SENSORS_MPU3050 || MPU_SENSORS_MPU6050B1 || MPU_SENSORS_MPU6050A2
 	help
 	  This enables support for the ST lis331dlh accelerometer
 	  This support is for integration with the MPU3050 gyroscope device
@@ -82,7 +82,7 @@ config MPU_SENSORS_LIS331DLH
 
 config MPU_SENSORS_LIS3DH
 	tristate "ST lis3dh"
-	depends on MPU_SENSORS_MPU3050
+	depends on MPU_SENSORS_MPU3050 || MPU_SENSORS_MPU6050B1 || MPU_SENSORS_MPU6050A2
 	help
 	  This enables support for the ST lis3dh accelerometer
 	  This support is for integration with the MPU3050 gyroscope device
@@ -90,11 +90,11 @@ config MPU_SENSORS_LIS3DH
 	  Specifying more that one accelerometer in the board file will result
 	  in runtime errors.
 
-config MPU_SENSORS_LSM303DLHA
-	tristate "ST lsm303dlh"
-	depends on MPU_SENSORS_MPU3050
+config MPU_SENSORS_LSM303DLX_A
+	tristate "ST lsm303dlx"
+	depends on MPU_SENSORS_MPU3050 || MPU_SENSORS_MPU6050B1 || MPU_SENSORS_MPU6050A2
 	help
-	  This enables support for the ST lsm303dlh accelerometer
+	  This enables support for the ST lsm303dlh and lsm303dlm accelerometers
 	  This support is for integration with the MPU3050 gyroscope device
 	  driver.  Only one accelerometer can be registered at a time.
 	  Specifying more that one accelerometer in the board file will result
@@ -102,7 +102,7 @@ config MPU_SENSORS_LSM303DLHA
 
 config MPU_SENSORS_MMA8450
 	tristate "Freescale mma8450"
-	depends on MPU_SENSORS_MPU3050
+	depends on MPU_SENSORS_MPU3050 || MPU_SENSORS_MPU6050B1 || MPU_SENSORS_MPU6050A2
 	help
 	  This enables support for the Freescale mma8450 accelerometer
 	  This support is for integration with the MPU3050 gyroscope device
@@ -112,7 +112,7 @@ config MPU_SENSORS_MMA8450
 
 config MPU_SENSORS_MMA845X
 	tristate "Freescale mma8451/8452/8453"
-	depends on MPU_SENSORS_MPU3050
+	depends on MPU_SENSORS_MPU3050 || MPU_SENSORS_MPU6050B1 || MPU_SENSORS_MPU6050A2
 	help
 	  This enables support for the Freescale mma8451/8452/8453 accelerometer
 	  This support is for integration with the MPU3050 gyroscope device

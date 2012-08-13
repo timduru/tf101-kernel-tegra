@@ -1,20 +1,20 @@
 /*
- $License:
-    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
+	$License:
+	Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-  $
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	$
  */
 
 /**
@@ -69,6 +69,30 @@ static int hscdtd004a_suspend(void *mlsl_handle,
 	}
 	msleep(1);		/* turn-off time */
 
+	return result;
+}
+
+static int hscdtd004a_init(void *mlsl_handle,
+			   struct ext_slave_descr *slave,
+			   struct ext_slave_platform_data *pdata)
+{
+	int result;
+	unsigned char data1, data2[2];
+
+	result = inv_serial_read(mlsl_handle, pdata->address, 0xf, 1, &data1);
+	if (result) {
+		LOG_RESULT_LOCATION(result);
+		return result;
+	}
+	result = inv_serial_read(mlsl_handle, pdata->address, 0xd, 2, data2);
+	if (result) {
+		LOG_RESULT_LOCATION(result);
+		return result;
+	}
+	if (data1 != 0x49 || data2[0] != 0x45 || data2[1] != 0x54) {
+		LOG_RESULT_LOCATION(INV_ERROR_SERIAL_DEVICE_NOT_RECOGNIZED);
+		return INV_ERROR_SERIAL_DEVICE_NOT_RECOGNIZED;
+	}
 	return result;
 }
 
@@ -151,7 +175,7 @@ static int hscdtd004a_read(void *mlsl_handle,
 }
 
 static struct ext_slave_descr hscdtd004a_descr = {
-	.init             = NULL,
+	.init             = hscdtd004a_init,
 	.exit             = NULL,
 	.suspend          = hscdtd004a_suspend,
 	.resume           = hscdtd004a_resume,

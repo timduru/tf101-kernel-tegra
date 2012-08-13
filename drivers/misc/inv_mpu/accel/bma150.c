@@ -1,20 +1,20 @@
 /*
- $License:
-    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
+	$License:
+	Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-  $
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	$
  */
 
 /**
@@ -307,13 +307,13 @@ static int bma150_init(void *mlsl_handle,
 	private_data->suspend.int_reg = reg;
 
 	result = bma150_set_odr(mlsl_handle, pdata, &private_data->suspend,
-				FALSE, 0);
+				false, 0);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
 	}
 	result = bma150_set_odr(mlsl_handle, pdata, &private_data->resume,
-				FALSE, 200000);
+				false, 200000);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
@@ -321,22 +321,22 @@ static int bma150_init(void *mlsl_handle,
 
 	range = range_fixedpoint_to_long_mg(slave->range);
 	result = bma150_set_fsr(mlsl_handle, pdata, &private_data->suspend,
-				FALSE, range);
+				false, range);
 	result = bma150_set_fsr(mlsl_handle, pdata, &private_data->resume,
-				FALSE, range);
+				false, range);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
 	}
 
 	result = bma150_set_irq(mlsl_handle, pdata, &private_data->suspend,
-				FALSE, MPU_SLAVE_IRQ_TYPE_NONE);
+				false, MPU_SLAVE_IRQ_TYPE_NONE);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
 	}
 	result = bma150_set_irq(mlsl_handle, pdata, &private_data->resume,
-				FALSE, MPU_SLAVE_IRQ_TYPE_NONE);
+				false, MPU_SLAVE_IRQ_TYPE_NONE);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
@@ -639,7 +639,7 @@ static struct ext_slave_descr bma150_descr = {
 	.config           = bma150_config,
 	.get_config       = bma150_get_config,
 	.name             = "bma150",
-	.type             = EXT_SLAVE_TYPE_ACCELEROMETER,
+	.type             = EXT_SLAVE_TYPE_ACCEL,
 	.id               = ACCEL_ID_BMA150,
 	.read_reg         = 0x02,
 	.read_len         = 6,

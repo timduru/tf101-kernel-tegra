@@ -25,8 +25,8 @@ inv_mpu_lis331-objs += lis331.o
 obj-$(CONFIG_MPU_SENSORS_LIS3DH) += inv_mpu_lis3dh.o
 inv_mpu_lis3dh-objs += lis3dh.o
 
-obj-$(CONFIG_MPU_SENSORS_LSM303DLHA) += inv_mpu_lsm303a.o
-inv_mpu_lsm303a-objs += lsm303a.o
+obj-$(CONFIG_MPU_SENSORS_LSM303DLX_A) += inv_mpu_lsm303dlx_a.o
+inv_mpu_lsm303dlx_a-objs += lsm303dlx_a.o
 
 obj-$(CONFIG_MPU_SENSORS_MMA8450) += inv_mpu_mma8450.o
 inv_mpu_mma8450-objs += mma8450.o
@@ -35,3 +35,4 @@ obj-$(CONFIG_MPU_SENSORS_MMA845X) += inv_mpu_mma845x.o
 inv_mpu_mma845x-objs += mma845x.o
 
 EXTRA_CFLAGS += -Idrivers/misc/inv_mpu
+EXTRA_CFLAGS += -D__C99_DESIGNATED_INITIALIZER

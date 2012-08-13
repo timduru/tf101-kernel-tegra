@@ -29,6 +29,17 @@
 
 #include "tegra_asoc_utils.h"
 
+int g_is_call_mode;
+
+bool tegra_is_voice_call_active()
+{
+	if (g_is_call_mode)
+		return true;
+	else
+		return false;
+}
+EXPORT_SYMBOL_GPL(tegra_is_voice_call_active);
+
 int tegra_asoc_utils_set_rate(struct tegra_asoc_utils_data *data, int srate,
 			      int mclk)
 {
@@ -142,12 +153,12 @@ int tegra_asoc_utils_clk_disable(struct tegra_asoc_utils_data *data)
 EXPORT_SYMBOL_GPL(tegra_asoc_utils_clk_disable);
 
 int tegra_asoc_utils_init(struct tegra_asoc_utils_data *data,
-			  struct device *dev)
+			  struct device *dev, struct snd_soc_card *card)
 {
 	int ret;
-	int rate;
 
 	data->dev = dev;
+	data->card = card;
 
 	data->clk_pll_p_out1 = clk_get_sys(NULL, "pll_p_out1");
 	if (IS_ERR(data->clk_pll_p_out1)) {
@@ -265,6 +276,10 @@ void tegra_asoc_utils_fini(struct tegra_asoc_utils_data *data)
 		clk_put(data->clk_out1);
 
 	clk_put(data->clk_cdev1);
+	/* Just to make sure that clk_cdev1 should turn off in case if it is
+	 * switched on by some codec whose hw switch is not registered.*/
+	if (tegra_is_clk_enabled(data->clk_cdev1))
+		clk_disable(data->clk_cdev1);
 
 	if (!IS_ERR(data->clk_pll_a_out0))
 		clk_put(data->clk_pll_a_out0);

@@ -3,28 +3,30 @@
  *
  * Tegra Graphics Host Syncpoints for HOST1X
  *
- * Copyright (c) 2010-2011, NVIDIA Corporation.
+ * Copyright (c) 2010-2012, NVIDIA Corporation.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
+ * This program is distributed in the hope it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/nvhost_ioctl.h>
+#include <linux/io.h>
+#include <trace/events/nvhost.h>
 #include "nvhost_syncpt.h"
+#include "nvhost_acm.h"
 #include "dev.h"
 #include "host1x_syncpt.h"
 #include "host1x_hardware.h"
+#include "chip_support.h"
 
 /**
  * Write the current syncpoint value back to hw.
@@ -71,14 +73,14 @@ static u32 t20_syncpt_update_min(struct nvhost_syncpt *sp, u32 id)
 		live = readl(sync_regs + (HOST1X_SYNC_SYNCPT_0 + id * 4));
 	} while ((u32)atomic_cmpxchg(&sp->min_val[id], old, live) != old);
 
-	if (!nvhost_syncpt_check_max(sp, id, live)) {
-		dev_err(&syncpt_to_dev(sp)->pdev->dev,
-				"%s failed: id=%u\n",
+	if (!nvhost_syncpt_check_max(sp, id, live))
+		dev_err(&syncpt_to_dev(sp)->dev->dev,
+				"%s failed: id=%u, min=%d, max=%d\n",
 				__func__,
+				nvhost_syncpt_read_min(sp, id),
+				nvhost_syncpt_read_max(sp, id),
 				id);
-		nvhost_debug_dump(syncpt_to_dev(sp));
-		BUG();
-	}
+
 	return live;
 }
 
@@ -89,29 +91,16 @@ static u32 t20_syncpt_update_min(struct nvhost_syncpt *sp, u32 id)
 static void t20_syncpt_cpu_incr(struct nvhost_syncpt *sp, u32 id)
 {
 	struct nvhost_master *dev = syncpt_to_dev(sp);
-	BUG_ON(!nvhost_module_powered(&dev->mod));
+	BUG_ON(!nvhost_module_powered(dev->dev));
 	if (!client_managed(id) && nvhost_syncpt_min_eq_max(sp, id)) {
-		dev_err(&syncpt_to_dev(sp)->pdev->dev,
-				"Syncpoint id %d\n",
-				id);
+		dev_err(&syncpt_to_dev(sp)->dev->dev,
+			"Trying to increment syncpoint id %d beyond max\n",
+			id);
 		nvhost_debug_dump(syncpt_to_dev(sp));
-		BUG();
+		return;
 	}
 	writel(BIT(id), dev->sync_aperture + HOST1X_SYNC_SYNCPT_CPU_INCR);
 	wmb();
-}
-
-/* returns true, if a <= b < c using wrapping comparison */
-static inline bool nvhost_syncpt_is_between(u32 a, u32 b, u32 c)
-{
-	return b-a < c-a;
-}
-
-/* returns true, if syncpt >= threshold (mod 1 << 32) */
-static bool nvhost_syncpt_wrapping_comparison(u32 syncpt, u32 threshold)
-{
-	return nvhost_syncpt_is_between(threshold, syncpt,
-					(1UL<<31UL)+threshold);
 }
 
 /* check for old WAITs to be removed (avoiding a wrap) */
@@ -134,12 +123,13 @@ static int t20_syncpt_wait_check(struct nvhost_syncpt *sp,
 
 	/* compare syncpt vs wait threshold */
 	while (num_waitchk) {
-		u32 syncpt, override;
+		u32 override;
 
 		BUG_ON(wait->syncpt_id >= NV_HOST1X_SYNCPT_NB_PTS);
-
-		syncpt = atomic_read(&sp->min_val[wait->syncpt_id]);
-		if (nvhost_syncpt_wrapping_comparison(syncpt, wait->thresh)) {
+		trace_nvhost_syncpt_wait_check(wait->mem, wait->offset,
+				wait->syncpt_id, wait->thresh);
+		if (nvhost_syncpt_is_expired(sp,
+					wait->syncpt_id, wait->thresh)) {
 			/*
 			 * NULL an already satisfied WAIT_SYNCPT host method,
 			 * by patching its args in the command stream. The
@@ -148,11 +138,12 @@ static int t20_syncpt_wait_check(struct nvhost_syncpt *sp,
 			 * syncpt with a matching threshold value of 0, so
 			 * is guaranteed to be popped by the host HW.
 			 */
-			dev_dbg(&syncpt_to_dev(sp)->pdev->dev,
-			    "drop WAIT id %d (%s) thresh 0x%x, syncpt 0x%x\n",
+			dev_dbg(&syncpt_to_dev(sp)->dev->dev,
+			    "drop WAIT id %d (%s) thresh 0x%x, min 0x%x\n",
 			    wait->syncpt_id,
-			    syncpt_op(sp).name(sp, wait->syncpt_id),
-			    wait->thresh, syncpt);
+			    syncpt_op().name(sp, wait->syncpt_id),
+			    wait->thresh,
+			    nvhost_syncpt_read_min(sp, wait->syncpt_id));
 
 			/* patch the wait */
 			override = nvhost_class_host_wait_syncpt(
@@ -199,12 +190,13 @@ static void t20_syncpt_debug(struct nvhost_syncpt *sp)
 	u32 i;
 	for (i = 0; i < NV_HOST1X_SYNCPT_NB_PTS; i++) {
 		u32 max = nvhost_syncpt_read_max(sp, i);
-		if (!max)
+		u32 min = nvhost_syncpt_update_min(sp, i);
+		if (!max && !min)
 			continue;
-		dev_info(&syncpt_to_dev(sp)->pdev->dev,
+		dev_info(&syncpt_to_dev(sp)->dev->dev,
 			"id %d (%s) min %d max %d\n",
-			 i, syncpt_op(sp).name(sp, i),
-			nvhost_syncpt_update_min(sp, i), max);
+			i, syncpt_op().name(sp, i),
+			min, max);
 
 	}
 
@@ -213,32 +205,52 @@ static void t20_syncpt_debug(struct nvhost_syncpt *sp)
 		t20_syncpt_read_wait_base(sp, i);
 		base_val = sp->base_val[i];
 		if (base_val)
-			dev_info(&syncpt_to_dev(sp)->pdev->dev,
+			dev_info(&syncpt_to_dev(sp)->dev->dev,
 					"waitbase id %d val %d\n",
 					i, base_val);
 
 	}
 }
 
-int host1x_init_syncpt_support(struct nvhost_master *host)
+static int syncpt_mutex_try_lock(struct nvhost_syncpt *sp,
+		unsigned int idx)
 {
+	void __iomem *sync_regs = syncpt_to_dev(sp)->sync_aperture;
+	/* mlock registers returns 0 when the lock is aquired.
+	 * writing 0 clears the lock. */
+	return !!readl(sync_regs + (HOST1X_SYNC_MLOCK_0 + idx * 4));
+}
 
+static void syncpt_mutex_unlock(struct nvhost_syncpt *sp,
+	       unsigned int idx)
+{
+	void __iomem *sync_regs = syncpt_to_dev(sp)->sync_aperture;
+
+	writel(0, sync_regs + (HOST1X_SYNC_MLOCK_0 + idx * 4));
+}
+
+int host1x_init_syncpt_support(struct nvhost_master *host,
+	struct nvhost_chip_support *op)
+{
 	host->sync_aperture = host->aperture +
 		(NV_HOST1X_CHANNEL0_BASE +
 			HOST1X_CHANNEL_SYNC_REG_BASE);
 
-	host->op.syncpt.reset = t20_syncpt_reset;
-	host->op.syncpt.reset_wait_base = t20_syncpt_reset_wait_base;
-	host->op.syncpt.read_wait_base = t20_syncpt_read_wait_base;
-	host->op.syncpt.update_min = t20_syncpt_update_min;
-	host->op.syncpt.cpu_incr = t20_syncpt_cpu_incr;
-	host->op.syncpt.wait_check = t20_syncpt_wait_check;
-	host->op.syncpt.debug = t20_syncpt_debug;
-	host->op.syncpt.name = t20_syncpt_name;
+	op->syncpt.reset = t20_syncpt_reset;
+	op->syncpt.reset_wait_base = t20_syncpt_reset_wait_base;
+	op->syncpt.read_wait_base = t20_syncpt_read_wait_base;
+	op->syncpt.update_min = t20_syncpt_update_min;
+	op->syncpt.cpu_incr = t20_syncpt_cpu_incr;
+	op->syncpt.wait_check = t20_syncpt_wait_check;
+	op->syncpt.debug = t20_syncpt_debug;
+	op->syncpt.name = t20_syncpt_name;
+	op->syncpt.mutex_try_lock = syncpt_mutex_try_lock;
+	op->syncpt.mutex_unlock = syncpt_mutex_unlock;
 
 	host->syncpt.nb_pts = NV_HOST1X_SYNCPT_NB_PTS;
 	host->syncpt.nb_bases = NV_HOST1X_SYNCPT_NB_BASES;
 	host->syncpt.client_managed = NVSYNCPTS_CLIENT_MANAGED;
+	host->syncpt.nb_mlocks =  NV_HOST1X_SYNC_MLOCK_NUM;
 
 	return 0;
 }

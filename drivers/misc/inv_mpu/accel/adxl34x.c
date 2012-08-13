@@ -1,20 +1,20 @@
 /*
- $License:
-    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
+	$License:
+	Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-  $
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	$
  */
 
 /**
@@ -356,13 +356,13 @@ static int adxl34x_suspend(void *mlsl_handle,
 		&((struct adxl34x_private_data *)pdata->private_data)->suspend;
 
 	result = adxl34x_set_odr(mlsl_handle, pdata, suspend_config,
-				TRUE, suspend_config->odr);
+				true, suspend_config->odr);
 	if (result) {
 	LOG_RESULT_LOCATION(result);
 	return result;
 }
 	result = adxl34x_set_fsr(mlsl_handle, pdata, suspend_config,
-				TRUE, suspend_config->fsr);
+				true, suspend_config->fsr);
 	if (result) {
 	LOG_RESULT_LOCATION(result);
 	return result;
@@ -438,7 +438,7 @@ static int adxl34x_resume(void *mlsl_handle,
 	}
 
 	result = adxl34x_set_odr(mlsl_handle, pdata, resume_config,
-				TRUE, resume_config->odr);
+				true, resume_config->odr);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
@@ -506,13 +506,13 @@ static int adxl34x_init(void *mlsl_handle,
 	pdata->private_data = private_data;
 
 	result = adxl34x_set_odr(mlsl_handle, pdata, &private_data->suspend,
-				FALSE, 0);
+				false, 0);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
 	}
 	result = adxl34x_set_odr(mlsl_handle, pdata, &private_data->resume,
-				FALSE, 200000);
+				false, 200000);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
@@ -520,9 +520,9 @@ static int adxl34x_init(void *mlsl_handle,
 
 	range = range_fixedpoint_to_long_mg(slave->range);
 	result = adxl34x_set_fsr(mlsl_handle, pdata, &private_data->suspend,
-				FALSE, range);
+				false, range);
 	result = adxl34x_set_fsr(mlsl_handle, pdata, &private_data->resume,
-				FALSE, range);
+				false, range);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
@@ -593,7 +593,7 @@ static struct ext_slave_descr adxl34x_descr = {
 	.config           = adxl34x_config,
 	.get_config       = adxl34x_get_config,
 	.name             = "adxl34x",	/* 5 or 6 */
-	.type             = EXT_SLAVE_TYPE_ACCELEROMETER,
+	.type             = EXT_SLAVE_TYPE_ACCEL,
 	.id               = ACCEL_ID_ADXL34X,
 	.read_reg         = 0x32,
 	.read_len         = 6,

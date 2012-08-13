@@ -1,20 +1,20 @@
 /*
- $License:
-    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
+	$License:
+	Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-  $
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	$
  */
 
 /**
@@ -48,6 +48,7 @@
 #define ACCEL_MMA8450_XYZ_DATA_CFG	(0x16)
 
 #define ACCEL_MMA8450_CTRL_REG1		(0x38)
+#define ACCEL_MMA8450_CTRL_REG2     (0x39)
 #define ACCEL_MMA8450_CTRL_REG4		(0x3B)
 #define ACCEL_MMA8450_CTRL_REG5		(0x3C)
 
@@ -204,7 +205,7 @@ static int mma8450_set_odr(void *mlsl_handle,
 		bits = 0x08;
 	} else if (odr > 25000) {
 		config->odr = 50000;
-		bits = 0x0B;
+		bits = 0x0C;
 	} else if (odr > 12500) {
 		config->odr = 25000;
 		bits = 0x40; /* Sleep -> Auto wake mode */
@@ -323,7 +324,7 @@ static int mma8450_suspend(void *mlsl_handle,
 		LOG_RESULT_LOCATION(result);
 		return result;
 	}
-	if (private_data->resume.ctrl_reg1) {
+	if (private_data->suspend.ctrl_reg1) {
 		result = inv_serial_single_write(mlsl_handle, pdata->address,
 				ACCEL_MMA8450_CTRL_REG1,
 				private_data->suspend.ctrl_reg1);
@@ -335,7 +336,7 @@ static int mma8450_suspend(void *mlsl_handle,
 
 	result = mma8450_set_irq(mlsl_handle, pdata,
 				&private_data->suspend,
-				TRUE, private_data->suspend.irq_type);
+				true, private_data->suspend.irq_type);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
@@ -393,7 +394,7 @@ static int mma8450_resume(void *mlsl_handle,
 	}
 	result = mma8450_set_irq(mlsl_handle, pdata,
 			&private_data->resume,
-			TRUE, private_data->resume.irq_type);
+			true, private_data->resume.irq_type);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
@@ -423,20 +424,16 @@ static int mma8450_read(void *mlsl_handle,
 	int result;
 	unsigned char local_data[4];	/* Status register + 3 bytes data */
 	result = inv_serial_read(mlsl_handle, pdata->address,
-				0x00,
-				 sizeof(local_data), local_data);
+				0x00, sizeof(local_data), local_data);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
 	}
 	memcpy(data, &local_data[1], (slave->read_len) - 1);
-		MPL_LOGV("Data Not Ready: %02x %02x %02x %02x\n",
-			local_data[0],
-			local_data[1],
-			local_data[2],
-			local_data[3]);
-	if (!((local_data[0]) & 0x04))
-		result = INV_ERROR_ACCEL_DATA_NOT_READY;
+
+	MPL_LOGV("Data Not Ready: %02x %02x %02x %02x\n",
+		 local_data[0], local_data[1],
+		 local_data[2], local_data[3]);
 
 	return result;
 }
@@ -471,18 +468,18 @@ static int mma8450_init(void *mlsl_handle,
 	pdata->private_data = private_data;
 
 	mma8450_set_odr(mlsl_handle, pdata, &private_data->suspend,
-			FALSE, 0);
+			false, 0);
 	mma8450_set_odr(mlsl_handle, pdata, &private_data->resume,
-			FALSE, 200000);
+			false, 200000);
 	mma8450_set_fsr(mlsl_handle, pdata, &private_data->suspend,
-			FALSE, 2000);
+			false, 2000);
 	mma8450_set_fsr(mlsl_handle, pdata, &private_data->resume,
-			FALSE, 2000);
+			false, 2000);
 	mma8450_set_irq(mlsl_handle, pdata, &private_data->suspend,
-			FALSE,
+			false,
 			MPU_SLAVE_IRQ_TYPE_NONE);
 	mma8450_set_irq(mlsl_handle, pdata, &private_data->resume,
-			FALSE,
+			false,
 			MPU_SLAVE_IRQ_TYPE_NONE);
 	return INV_SUCCESS;
 }
@@ -672,7 +669,7 @@ static struct ext_slave_descr mma8450_descr = {
 	.config           = mma8450_config,
 	.get_config       = mma8450_get_config,
 	.name             = "mma8450",
-	.type             = EXT_SLAVE_TYPE_ACCELEROMETER,
+	.type             = EXT_SLAVE_TYPE_ACCEL,
 	.id               = ACCEL_ID_MMA8450,
 	.read_reg         = 0x00,
 	.read_len         = 4,

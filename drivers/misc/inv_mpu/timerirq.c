@@ -1,20 +1,20 @@
 /*
- $License:
-    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
+	$License:
+	Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-  $
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	$
  */
 #include <linux/interrupt.h>
 #include <linux/module.h>
@@ -61,12 +61,15 @@ static struct miscdevice *timerirq_dev_data;
 static void timerirq_handler(unsigned long arg)
 {
 	struct timerirq_data *data = (struct timerirq_data *)arg;
+	struct timeval irqtime;
 
 	data->data.interruptcount++;
 
 	data->data_ready = 1;
 
-	data->data.irqtime = ktime_to_ns(ktime_get());
+	do_gettimeofday(&irqtime);
+	data->data.irqtime = (((long long)irqtime.tv_sec) << 32);
+	data->data.irqtime += irqtime.tv_usec;
 	data->data.data_type |= 1;
 
 	dev_dbg(data->dev->this_device,
@@ -95,8 +98,8 @@ static int start_timerirq(struct timerirq_data *data)
 	if (!data->period)
 		return -EINVAL;
 
-	data->run = TRUE;
-	data->data_ready = FALSE;
+	data->run = true;
+	data->data_ready = false;
 
 	init_completion(&data->timer_done);
 	setup_timer(&data->timer, timerirq_handler, (unsigned long)data);
@@ -111,7 +114,7 @@ static int stop_timerirq(struct timerirq_data *data)
 		"%s current->pid %lx\n", __func__, (unsigned long)data);
 
 	if (data->run) {
-		data->run = FALSE;
+		data->run = false;
 		mod_timer(&data->timer, jiffies + 1);
 		wait_for_completion(&data->timer_done);
 	}

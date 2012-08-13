@@ -1,20 +1,20 @@
 /*
- $License:
-    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
+	$License:
+	Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-  $
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	$
  */
 
 /**
@@ -46,17 +46,6 @@
 #undef MPL_LOG_TAG
 #define MPL_LOG_TAG "MPL-compass"
 
-enum {
-	FLAG_OFFSETS_VALID = 0x00000001,
-	FLAG_RESUMED       = 0x00000002,
-};
-
-struct yas530_private_data {
-	int flags;
-	char offsets[3];
-	const int *correction_matrix;
-};
-
 /* -------------------------------------------------------------------------- */
 #define YAS530_REGADDR_DEVICE_ID          (0x80)
 #define YAS530_REGADDR_ACTUATE_INIT_COIL  (0x81)
@@ -81,11 +70,6 @@ static unsigned char d2, d3, d4, d5, d6, d7, d8, d9, d0;
 static unsigned char dck;
 
 /* -------------------------------------------------------------------------- */
-
-static int is_overunderflow(short xy1y2)
-{
-	return (xy1y2 == 0 || xy1y2 == 4095);
-}
 
 static int set_hardware_offset(void *mlsl_handle,
 			       struct ext_slave_descr *slave,
@@ -161,7 +145,6 @@ static int measure_normal(void *mlsl_handle,
 		LOG_RESULT_LOCATION(result);
 		return result;
 	}
-	/* msleep(2); */
 
 	b = (data[0] >> 7) & 0x01;
 	to = ((data[0] << 2) & 0x1fc) | ((data[1] >> 6) & 0x03);
@@ -286,13 +269,23 @@ static void coordinate_conversion(short x, short y1, short y2, short t,
 	*zo = hz;
 }
 
-static int power_up(void *mlsl_handle,
-		    struct ext_slave_descr *slave,
-		    struct ext_slave_platform_data *pdata)
+static int yas530_suspend(void *mlsl_handle,
+			  struct ext_slave_descr *slave,
+		   struct ext_slave_platform_data *pdata)
+{
+	int result = INV_SUCCESS;
+
+	return result;
+}
+
+static int yas530_resume(void *mlsl_handle,
+			 struct ext_slave_descr *slave,
+			 struct ext_slave_platform_data *pdata)
 {
 	int result = INV_SUCCESS;
 
 	unsigned char dummyData = 0x00;
+	char offset[3] = { 0, 0, 0 };
 	unsigned char data[16];
 	unsigned char read_reg[1];
 
@@ -396,36 +389,12 @@ static int power_up(void *mlsl_handle,
 		return result;
 	}
 
-	return result;
-
-}
-
-static int yas530_suspend(void *mlsl_handle,
-			  struct ext_slave_descr *slave,
-			  struct ext_slave_platform_data *pdata)
-{
-	int result = INV_SUCCESS;
-
-	return result;
-}
-
-
-static int yas530_resume(void *mlsl_handle,
-			 struct ext_slave_descr *slave,
-			 struct ext_slave_platform_data *pdata)
-{
-	int result = INV_SUCCESS;
-
-	struct yas530_private_data *private_data = pdata->private_data;
-
-	result = power_up(mlsl_handle, slave, pdata);
-
+	/* Offset Measurement and Set */
+	result = measure_and_set_offset(mlsl_handle, slave, pdata, offset);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
 	}
-
-	private_data->flags |= FLAG_RESUMED;
 
 	return result;
 }
@@ -440,11 +409,7 @@ static int yas530_read(void *mlsl_handle,
 	int busy;
 	short t, x, y1, y2;
 	int32_t xyz[3];
-	int32_t tmp[3];
-	int i;
 	short rawfixed[3];
-	struct yas530_private_data *private_data = pdata->private_data;
-	const int *correction_matrix = private_data->correction_matrix;
 
 	result = measure_normal(mlsl_handle, slave, pdata,
 				&busy, &t, &x, &y1, &y2);
@@ -454,19 +419,6 @@ static int yas530_read(void *mlsl_handle,
 	}
 
 	coordinate_conversion(x, y1, y2, t, &xyz[0], &xyz[1], &xyz[2]);
-	if (correction_matrix) {
-		for (i = 0; i < 3; i++) {
-			tmp[i] =  (correction_matrix[i * 3 + 0]
-				* (xyz[0] / 10)) / 100
-				+ (correction_matrix[i * 3 + 1]
-				* (xyz[1] / 10)) / 100
-				+ (correction_matrix[i * 3 + 2]
-				* (xyz[2] / 10)) / 100;
-		}
-		for (i = 0; i < 3; i++)
-			xyz[i] = tmp[i];
-	}
-
 
 	rawfixed[0] = (short)(xyz[0] / 100);
 	rawfixed[1] = (short)(xyz[1] / 100);
@@ -478,181 +430,25 @@ static int yas530_read(void *mlsl_handle,
 	data[3] = rawfixed[1] & 0xFF;
 	data[4] = rawfixed[2] >> 8;
 	data[5] = rawfixed[2] & 0xFF;
-	data[6] = is_overunderflow(x)
-			|| is_overunderflow(y1)
-			|| is_overunderflow(y2);
 
+	if (busy)
+		return INV_ERROR_COMPASS_DATA_NOT_READY;
 	return result;
-}
-
-static int yas530_config(void *mlsl_handle,
-			 struct ext_slave_descr *slave,
-			 struct ext_slave_platform_data *pdata,
-			 struct ext_slave_config *data)
-{
-	int result = INV_SUCCESS;
-	struct yas530_private_data *private_data = pdata->private_data;
-	switch (data->key) {
-	case MPU_SLAVE_OFFSET_VALS: {
-		char offs_x, offs_y1, offs_y2;
-		offs_x  = ((char *)(data->data))[0];
-		offs_y1 = ((char *)(data->data))[1];
-		offs_y2 = ((char *)(data->data))[2];
-		result = set_hardware_offset(mlsl_handle, slave, pdata,
-					     offs_x, offs_y1, offs_y2);
-		if (result == INV_SUCCESS) {
-			private_data->flags |= FLAG_OFFSETS_VALID;
-			private_data->offsets[0] = offs_x;
-			private_data->offsets[1] = offs_y1;
-			private_data->offsets[2] = offs_y2;
-		}
-		break;
-	}
-	default:
-		return INV_ERROR_FEATURE_NOT_IMPLEMENTED;
-	}
-
-	return result;
-
-}
-
-static int yas530_get_config(void *mlsl_handle,
-			     struct ext_slave_descr *slave,
-			     struct ext_slave_platform_data *pdata,
-			     struct ext_slave_config *data)
-{
-	int result = INV_SUCCESS;
-	struct yas530_private_data *private_data = pdata->private_data;
-
-	switch (data->key) {
-	case MPU_SLAVE_OFFSET_VALS: {
-		if (!(private_data->flags & FLAG_RESUMED)) {
-			result = power_up(mlsl_handle, slave, pdata);
-			if (result) {
-				LOG_RESULT_LOCATION(result);
-				return result;
-			}
-		} else {
-			result = inv_serial_single_write(mlsl_handle,
-					pdata->address,
-					YAS530_REGADDR_ACTUATE_INIT_COIL, 0);
-			if (result) {
-				LOG_RESULT_LOCATION(result);
-				return result;
-			}
-		}
-		result = measure_and_set_offset(mlsl_handle, slave, pdata,
-						(char *)(data->data));
-		if (result == INV_SUCCESS) {
-			private_data->flags |= FLAG_OFFSETS_VALID;
-			private_data->offsets[0] = ((char *)(data->data))[0];
-			private_data->offsets[1] = ((char *)(data->data))[1];
-			private_data->offsets[2] = ((char *)(data->data))[2];
-		}
-		break;
-	}
-	case MPU_SLAVE_RANGE_CHECK: {
-		int busy;
-		short t, x, y1, y2;
-		char flag_x = 0, flag_y1 = 0, flag_y2 = 0;
-
-		if (!(private_data->flags & FLAG_OFFSETS_VALID))
-			return INV_ERROR_INVALID_CONFIGURATION;
-
-		if (!(private_data->flags & FLAG_RESUMED)) {
-			result = power_up(mlsl_handle, slave, pdata);
-			if (result) {
-				LOG_RESULT_LOCATION(result);
-				return result;
-			}
-		}
-
-		result = measure_normal(mlsl_handle, slave, pdata,
-					&busy, &t, &x, &y1, &y2);
-
-		if (x < 1024)
-			flag_x = -1;
-		if (x > 3072)
-			flag_x = 1;
-		if (y1 < 1024)
-			flag_y1 = -1;
-		if (y1 > 3072)
-			flag_y1 = 1;
-		if (y2 < 1024)
-			flag_y2 = -1;
-		if (y2 > 3072)
-			flag_y2 = 1;
-
-		((char *) (data->data))[0] = (char) flag_x;
-		((char *) (data->data))[1] = (char) flag_y1;
-		((char *) (data->data))[2] = (char) flag_y2;
-		break;
-	}
-	default:
-		return INV_ERROR_FEATURE_NOT_IMPLEMENTED;
-	}
-
-	return result;
-
-}
-
-static int yas530_init(void *mlsl_handle,
-		       struct ext_slave_descr *slave,
-		       struct ext_slave_platform_data *pdata)
-{
-
-	struct yas530_private_data *private_data;
-	int result = INV_SUCCESS;
-	char offset[3] = {0, 0, 0};
-
-	private_data = (struct yas530_private_data *)
-			kzalloc(sizeof(struct yas530_private_data), GFP_KERNEL);
-
-	if (!private_data)
-		return INV_ERROR_MEMORY_EXAUSTED;
-
-	private_data->correction_matrix = pdata->private_data;
-
-	pdata->private_data = private_data;
-
-	result = power_up(mlsl_handle, slave, pdata);
-	if (result) {
-		LOG_RESULT_LOCATION(result);
-		return result;
-	}
-
-	result = measure_and_set_offset(mlsl_handle, slave, pdata, offset);
-	if (result == INV_SUCCESS) {
-		private_data->flags |= FLAG_OFFSETS_VALID;
-		private_data->offsets[0] = offset[0];
-		private_data->offsets[1] = offset[1];
-		private_data->offsets[2] = offset[2];
-	}
-
-	return result;
-}
-
-static int yas530_exit(void *mlsl_handle,
-		       struct ext_slave_descr *slave,
-		       struct ext_slave_platform_data *pdata)
-{
-	kfree(pdata->private_data);
-	return INV_SUCCESS;
 }
 
 static struct ext_slave_descr yas530_descr = {
-	.init             = yas530_init,
-	.exit             = yas530_exit,
+	.init             = NULL,
+	.exit             = NULL,
 	.suspend          = yas530_suspend,
 	.resume           = yas530_resume,
 	.read             = yas530_read,
-	.config           = yas530_config,
-	.get_config       = yas530_get_config,
+	.config           = NULL,
+	.get_config       = NULL,
 	.name             = "yas530",
 	.type             = EXT_SLAVE_TYPE_COMPASS,
 	.id               = COMPASS_ID_YAS530,
 	.read_reg         = 0x06,
-	.read_len         = 7,
+	.read_len         = 6,
 	.endian           = EXT_SLAVE_BIG_ENDIAN,
 	.range            = {3276, 8001},
 	.trigger          = NULL,

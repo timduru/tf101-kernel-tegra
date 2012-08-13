@@ -9,10 +9,28 @@ menuconfig INV_SENSORS_COMPASS
 
 if INV_SENSORS_COMPASS
 
+config MPU_SENSORS_AK8963
+        tristate "AKM ak8963"
+        help
+          This enables support for the AKM ak8963 compass
+          This support is for integration with the MPU3050 or MPU6050 gyroscope
+          device driver.  Only one compass can be registered at a time.
+          Specifying more that one compass in the board file will result
+          in runtime errors.
+
 config MPU_SENSORS_AK8975
 	tristate "AKM ak8975"
 	help
 	  This enables support for the AKM ak8975 compass
+	  This support is for integration with the MPU3050 or MPU6050 gyroscope
+	  device driver.  Only one compass can be registered at a time.
+	  Specifying more that one compass in the board file will result
+	  in runtime errors.
+
+config MPU_SENSORS_AK8972
+	tristate "AKM ak8972"
+	help
+	  This enables support for the AKM ak8972 compass
 	  This support is for integration with the MPU3050 or MPU6050 gyroscope
 	  device driver.  Only one compass can be registered at a time.
 	  Specifying more that one compass in the board file will result
@@ -54,10 +72,10 @@ config MPU_SENSORS_HMC5883
 	  Specifying more that one compass in the board file will result
 	  in runtime errors.
 
-config MPU_SENSORS_LSM303DLHM
-	tristate "ST lsm303dlh"
+config MPU_SENSORS_LSM303DLX_M
+	tristate "ST lsm303dlx"
 	help
-	  This enables support for the ST lsm303dlh compass
+	  This enables support for the ST lsm303dlh and lsm303dlm compasses
 	  This support is for integration with the MPU3050 or MPU6050 gyroscope
 	  device driver.  Only one compass can be registered at a time.
 	  Specifying more that one compass in the board file will result

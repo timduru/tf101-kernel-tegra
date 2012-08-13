@@ -1,20 +1,20 @@
 /*
- $License:
-    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
+	$License:
+	Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-  $
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	$
  */
 
 /**
@@ -48,35 +48,38 @@
 #define MPL_LOG_TAG "MPL-acc"
 
 /* full scale setting - register & mask */
-#define LIS331_CTRL_REG1         (0x20)
-#define LIS331_CTRL_REG2         (0x21)
-#define LIS331_CTRL_REG3         (0x22)
-#define LIS331_CTRL_REG4         (0x23)
-#define LIS331_CTRL_REG5         (0x24)
-#define LIS331_HP_FILTER_RESET   (0x25)
-#define LIS331_REFERENCE         (0x26)
-#define LIS331_STATUS_REG        (0x27)
-#define LIS331_OUT_X_L           (0x28)
-#define LIS331_OUT_X_H           (0x29)
-#define LIS331_OUT_Y_L           (0x2a)
-#define LIS331_OUT_Y_H           (0x2b)
-#define LIS331_OUT_Z_L           (0x2b)
-#define LIS331_OUT_Z_H           (0x2d)
+#define LIS331DLH_CTRL_REG1         (0x20)
+#define LIS331DLH_CTRL_REG2         (0x21)
+#define LIS331DLH_CTRL_REG3         (0x22)
+#define LIS331DLH_CTRL_REG4         (0x23)
+#define LIS331DLH_CTRL_REG5         (0x24)
+#define LIS331DLH_HP_FILTER_RESET   (0x25)
+#define LIS331DLH_REFERENCE         (0x26)
+#define LIS331DLH_STATUS_REG        (0x27)
+#define LIS331DLH_OUT_X_L           (0x28)
+#define LIS331DLH_OUT_X_H           (0x29)
+#define LIS331DLH_OUT_Y_L           (0x2a)
+#define LIS331DLH_OUT_Y_H           (0x2b)
+#define LIS331DLH_OUT_Z_L           (0x2b)
+#define LIS331DLH_OUT_Z_H           (0x2d)
 
-#define LIS331_INT1_CFG          (0x30)
-#define LIS331_INT1_SRC          (0x31)
-#define LIS331_INT1_THS          (0x32)
-#define LIS331_INT1_DURATION     (0x33)
+#define LIS331DLH_INT1_CFG          (0x30)
+#define LIS331DLH_INT1_SRC          (0x31)
+#define LIS331DLH_INT1_THS          (0x32)
+#define LIS331DLH_INT1_DURATION     (0x33)
 
-#define LIS331_INT2_CFG          (0x34)
-#define LIS331_INT2_SRC          (0x35)
-#define LIS331_INT2_THS          (0x36)
-#define LIS331_INT2_DURATION     (0x37)
+#define LIS331DLH_INT2_CFG          (0x34)
+#define LIS331DLH_INT2_SRC          (0x35)
+#define LIS331DLH_INT2_THS          (0x36)
+#define LIS331DLH_INT2_DURATION     (0x37)
 
-#define LIS331_CTRL_MASK         (0x30)
-#define LIS331_SLEEP_MASK        (0x20)
+/* CTRL_REG1 */
+#define LIS331DLH_CTRL_MASK         (0x30)
+#define LIS331DLH_SLEEP_MASK        (0x20)
+#define LIS331DLH_PWR_MODE_NORMAL   (0x20)
 
-#define LIS331_MAX_DUR (0x7F)
+#define LIS331DLH_MAX_DUR           (0x7F)
+
 
 /* -------------------------------------------------------------------------- */
 
@@ -115,7 +118,7 @@ static int lis331dlh_set_ths(void *mlsl_handle,
 	MPL_LOGV("THS: %d, 0x%02x\n", config->ths, (int)config->reg_ths);
 	if (apply)
 		result = inv_serial_single_write(mlsl_handle, pdata->address,
-						 LIS331_INT1_THS,
+						 LIS331DLH_INT1_THS,
 						 config->reg_ths);
 	return result;
 }
@@ -129,14 +132,14 @@ static int lis331dlh_set_dur(void *mlsl_handle,
 	long reg_dur = (dur * config->odr) / 1000000L;
 	config->dur = dur;
 
-	if (reg_dur > LIS331_MAX_DUR)
-		reg_dur = LIS331_MAX_DUR;
+	if (reg_dur > LIS331DLH_MAX_DUR)
+		reg_dur = LIS331DLH_MAX_DUR;
 
 	config->reg_dur = (unsigned char)reg_dur;
 	MPL_LOGV("DUR: %d, 0x%02x\n", config->dur, (int)config->reg_dur);
 	if (apply)
 		result = inv_serial_single_write(mlsl_handle, pdata->address,
-						 LIS331_INT1_DURATION,
+						 LIS331DLH_INT1_DURATION,
 						 (unsigned char)reg_dur);
 	return result;
 }
@@ -174,9 +177,9 @@ static int lis331dlh_set_irq(void *mlsl_handle,
 
 	if (apply) {
 		result = inv_serial_single_write(mlsl_handle, pdata->address,
-						 LIS331_CTRL_REG3, reg1);
+						 LIS331DLH_CTRL_REG3, reg1);
 		result = inv_serial_single_write(mlsl_handle, pdata->address,
-						 LIS331_INT1_CFG, reg2);
+						 LIS331DLH_INT1_CFG, reg2);
 	}
 
 	return result;
@@ -196,24 +199,26 @@ static int lis331dlh_set_odr(void *mlsl_handle,
 	unsigned char bits;
 	int result = INV_SUCCESS;
 
+	/* normal power modes */
 	if (odr > 400000) {
 		config->odr = 1000000;
-		bits = 0x38;
+		bits = LIS331DLH_PWR_MODE_NORMAL | 0x18;
 	} else if (odr > 100000) {
 		config->odr = 400000;
-		bits = 0x30;
+		bits = LIS331DLH_PWR_MODE_NORMAL | 0x10;
 	} else if (odr > 50000) {
 		config->odr = 100000;
-		bits = 0x28;
+		bits = LIS331DLH_PWR_MODE_NORMAL | 0x08;
 	} else if (odr > 10000) {
 		config->odr = 50000;
-		bits = 0x20;
+		bits = LIS331DLH_PWR_MODE_NORMAL | 0x00;
+	/* low power modes */
 	} else if (odr > 5000) {
 		config->odr = 10000;
 		bits = 0xC0;
 	} else if (odr > 2000) {
 		config->odr = 5000;
-		bits = 0xB0;
+		bits = 0xA0;
 	} else if (odr > 1000) {
 		config->odr = 2000;
 		bits = 0x80;
@@ -233,7 +238,7 @@ static int lis331dlh_set_odr(void *mlsl_handle,
 	MPL_LOGV("ODR: %d, 0x%02x\n", config->odr, (int)config->ctrl_reg1);
 	if (apply)
 		result = inv_serial_single_write(mlsl_handle, pdata->address,
-						 LIS331_CTRL_REG1,
+						 LIS331DLH_CTRL_REG1,
 						 config->ctrl_reg1);
 	return result;
 }
@@ -266,7 +271,7 @@ static int lis331dlh_set_fsr(void *mlsl_handle,
 	MPL_LOGV("FSR: %d\n", config->fsr);
 	if (apply)
 		result = inv_serial_single_write(mlsl_handle, pdata->address,
-						 LIS331_CTRL_REG4, reg1);
+						 LIS331DLH_CTRL_REG4, reg1);
 
 	return result;
 }
@@ -282,11 +287,11 @@ static int lis331dlh_suspend(void *mlsl_handle,
 		(struct lis331dlh_private_data *)(pdata->private_data);
 
 	result = inv_serial_single_write(mlsl_handle, pdata->address,
-					 LIS331_CTRL_REG1,
+					 LIS331DLH_CTRL_REG1,
 					 private_data->suspend.ctrl_reg1);
 
 	result = inv_serial_single_write(mlsl_handle, pdata->address,
-					 LIS331_CTRL_REG2, 0x0f);
+					 LIS331DLH_CTRL_REG2, 0x0f);
 	reg1 = 0x40;
 	if (private_data->suspend.fsr == 8192)
 		reg1 |= 0x30;
@@ -295,12 +300,12 @@ static int lis331dlh_suspend(void *mlsl_handle,
 	/* else bits [4..5] are already zero */
 
 	result = inv_serial_single_write(mlsl_handle, pdata->address,
-					 LIS331_CTRL_REG4, reg1);
+					 LIS331DLH_CTRL_REG4, reg1);
 	result = inv_serial_single_write(mlsl_handle, pdata->address,
-					 LIS331_INT1_THS,
+					 LIS331DLH_INT1_THS,
 					 private_data->suspend.reg_ths);
 	result = inv_serial_single_write(mlsl_handle, pdata->address,
-					 LIS331_INT1_DURATION,
+					 LIS331DLH_INT1_DURATION,
 					 private_data->suspend.reg_dur);
 
 	if (private_data->suspend.irq_type == MPU_SLAVE_IRQ_TYPE_DATA_READY) {
@@ -315,11 +320,11 @@ static int lis331dlh_suspend(void *mlsl_handle,
 		reg2 = 0x00;
 	}
 	result = inv_serial_single_write(mlsl_handle, pdata->address,
-					 LIS331_CTRL_REG3, reg1);
+					 LIS331DLH_CTRL_REG3, reg1);
 	result = inv_serial_single_write(mlsl_handle, pdata->address,
-					 LIS331_INT1_CFG, reg2);
+					 LIS331DLH_INT1_CFG, reg2);
 	result = inv_serial_read(mlsl_handle, pdata->address,
-				 LIS331_HP_FILTER_RESET, 1, &reg1);
+				 LIS331DLH_HP_FILTER_RESET, 1, &reg1);
 	return result;
 }
 
@@ -334,7 +339,7 @@ static int lis331dlh_resume(void *mlsl_handle,
 		(struct lis331dlh_private_data *)(pdata->private_data);
 
 	result = inv_serial_single_write(mlsl_handle, pdata->address,
-					 LIS331_CTRL_REG1,
+					 LIS331DLH_CTRL_REG1,
 					 private_data->resume.ctrl_reg1);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
@@ -350,7 +355,7 @@ static int lis331dlh_resume(void *mlsl_handle,
 		reg1 |= 0x10;
 
 	result = inv_serial_single_write(mlsl_handle, pdata->address,
-					 LIS331_CTRL_REG4, reg1);
+					 LIS331DLH_CTRL_REG4, reg1);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
@@ -358,7 +363,7 @@ static int lis331dlh_resume(void *mlsl_handle,
 
 	/* Configure high pass filter */
 	result = inv_serial_single_write(mlsl_handle, pdata->address,
-					 LIS331_CTRL_REG2, 0x0F);
+					 LIS331DLH_CTRL_REG2, 0x0F);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
@@ -375,33 +380,33 @@ static int lis331dlh_resume(void *mlsl_handle,
 		reg2 = 0x00;
 	}
 	result = inv_serial_single_write(mlsl_handle, pdata->address,
-					 LIS331_CTRL_REG3, reg1);
+					 LIS331DLH_CTRL_REG3, reg1);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
 	}
 	result = inv_serial_single_write(mlsl_handle, pdata->address,
-					 LIS331_INT1_THS,
+					 LIS331DLH_INT1_THS,
 					 private_data->resume.reg_ths);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
 	}
 	result = inv_serial_single_write(mlsl_handle, pdata->address,
-					 LIS331_INT1_DURATION,
+					 LIS331DLH_INT1_DURATION,
 					 private_data->resume.reg_dur);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
 	}
 	result = inv_serial_single_write(mlsl_handle, pdata->address,
-					 LIS331_INT1_CFG, reg2);
+					 LIS331DLH_INT1_CFG, reg2);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
 	}
 	result = inv_serial_read(mlsl_handle, pdata->address,
-				 LIS331_HP_FILTER_RESET, 1, &reg1);
+				 LIS331DLH_HP_FILTER_RESET, 1, &reg1);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
@@ -416,7 +421,7 @@ static int lis331dlh_read(void *mlsl_handle,
 {
 	int result = INV_SUCCESS;
 	result = inv_serial_read(mlsl_handle, pdata->address,
-				 LIS331_STATUS_REG, 1, data);
+				 LIS331DLH_STATUS_REG, 1, data);
 	if (data[0] & 0x0F) {
 		result = inv_serial_read(mlsl_handle, pdata->address,
 					 slave->read_reg, slave->read_len,
@@ -445,30 +450,30 @@ static int lis331dlh_init(void *mlsl_handle,
 	private_data->resume.mot_int1_cfg = 0x95;
 	private_data->suspend.mot_int1_cfg = 0x2a;
 
-	lis331dlh_set_odr(mlsl_handle, pdata, &private_data->suspend, FALSE, 0);
+	lis331dlh_set_odr(mlsl_handle, pdata, &private_data->suspend, false, 0);
 	lis331dlh_set_odr(mlsl_handle, pdata, &private_data->resume,
-			  FALSE, 200000);
+			  false, 200000);
 
 	range = range_fixedpoint_to_long_mg(slave->range);
 	lis331dlh_set_fsr(mlsl_handle, pdata, &private_data->suspend,
-			FALSE, range);
+			false, range);
 	lis331dlh_set_fsr(mlsl_handle, pdata, &private_data->resume,
-			FALSE, range);
+			false, range);
 
 	lis331dlh_set_ths(mlsl_handle, pdata, &private_data->suspend,
-			  FALSE, 80);
-	lis331dlh_set_ths(mlsl_handle, pdata, &private_data->resume, FALSE, 40);
+			  false, 80);
+	lis331dlh_set_ths(mlsl_handle, pdata, &private_data->resume, false, 40);
 
 
 	lis331dlh_set_dur(mlsl_handle, pdata, &private_data->suspend,
-			  FALSE, 1000);
+			  false, 1000);
 	lis331dlh_set_dur(mlsl_handle, pdata, &private_data->resume,
-			  FALSE, 2540);
+			  false, 2540);
 
 	lis331dlh_set_irq(mlsl_handle, pdata, &private_data->suspend,
-			  FALSE, MPU_SLAVE_IRQ_TYPE_NONE);
+			  false, MPU_SLAVE_IRQ_TYPE_NONE);
 	lis331dlh_set_irq(mlsl_handle, pdata, &private_data->resume,
-			  FALSE, MPU_SLAVE_IRQ_TYPE_NONE);
+			  false, MPU_SLAVE_IRQ_TYPE_NONE);
 	return INV_SUCCESS;
 }
 
@@ -605,7 +610,7 @@ static struct ext_slave_descr lis331dlh_descr = {
 	.config           = lis331dlh_config,
 	.get_config       = lis331dlh_get_config,
 	.name             = "lis331dlh",
-	.type             = EXT_SLAVE_TYPE_ACCELEROMETER,
+	.type             = EXT_SLAVE_TYPE_ACCEL,
 	.id               = ACCEL_ID_LIS331,
 	.read_reg         = (0x28 | 0x80), /* 0x80 for burst reads */
 	.read_len         = 6,

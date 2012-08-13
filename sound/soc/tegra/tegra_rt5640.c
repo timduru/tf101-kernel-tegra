@@ -45,6 +45,7 @@
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 
+#include "../codecs/rt5639.h"
 #include "../codecs/rt5640.h"
 
 #include "tegra_pcm.h"
@@ -68,6 +69,8 @@ struct tegra_rt5640 {
 #ifdef CONFIG_SWITCH
 	int jack_status;
 #endif
+	enum snd_soc_bias_level bias_level;
+	volatile int clock_enabled;
 };
 
 static int tegra_rt5640_hw_params(struct snd_pcm_substream *substream,
@@ -266,7 +269,7 @@ enum headset_state {
 };
 
 static struct switch_dev tegra_rt5640_headset_switch = {
-	.name = "h2w1",
+	.name = "h2w",
 };
 
 static int tegra_rt5640_jack_notifier(struct notifier_block *self,
@@ -276,14 +279,45 @@ static int tegra_rt5640_jack_notifier(struct notifier_block *self,
 	struct snd_soc_codec *codec = jack->codec;
 	struct snd_soc_card *card = codec->card;
 	struct tegra_rt5640 *machine = snd_soc_card_get_drvdata(card);
+	struct tegra_rt5640_platform_data *pdata = machine->pdata;
 	enum headset_state state = BIT_NO_HEADSET;
+	unsigned char status_jack = 0;
 
 	if (jack == &tegra_rt5640_hp_jack) {
-		machine->jack_status &= ~SND_JACK_HEADPHONE;
-		machine->jack_status |= (action & SND_JACK_HEADPHONE);
-	} else {
-		machine->jack_status &= ~SND_JACK_MICROPHONE;
-		machine->jack_status |= (action & SND_JACK_MICROPHONE);
+		if (action) {
+			/* Enable ext mic; enable signal is active-low */
+			gpio_direction_output(pdata->gpio_ext_mic_en, 0);
+			if (!strncmp(machine->pdata->codec_name, "rt5639", 6))
+				status_jack = rt5639_headset_detect(codec, 1);
+			else if (!strncmp(machine->pdata->codec_name, "rt5640",
+									    6))
+				status_jack = rt5640_headset_detect(codec, 1);
+
+			machine->jack_status &= ~SND_JACK_HEADPHONE;
+			machine->jack_status &= ~SND_JACK_MICROPHONE;
+			if (status_jack == RT5639_HEADPHO_DET ||
+			    status_jack == RT5640_HEADPHO_DET)
+					machine->jack_status |=
+							SND_JACK_HEADPHONE;
+			else if (status_jack == RT5639_HEADSET_DET ||
+				 status_jack == RT5640_HEADSET_DET) {
+					machine->jack_status |=
+							SND_JACK_HEADPHONE;
+					machine->jack_status |=
+							SND_JACK_MICROPHONE;
+			}
+		} else {
+			/* Disable ext mic; enable signal is active-low */
+			gpio_direction_output(pdata->gpio_ext_mic_en, 1);
+			if (!strncmp(machine->pdata->codec_name, "rt5639", 6))
+				rt5639_headset_detect(codec, 0);
+			else if (!strncmp(machine->pdata->codec_name, "rt5640",
+									    6))
+				rt5640_headset_detect(codec, 0);
+
+			machine->jack_status &= ~SND_JACK_HEADPHONE;
+			machine->jack_status &= ~SND_JACK_MICROPHONE;
+		}
 	}
 
 	switch (machine->jack_status) {
@@ -315,12 +349,6 @@ static struct snd_soc_jack_pin tegra_rt5640_hp_jack_pins[] = {
 	},
 };
 
-static struct snd_soc_jack_pin tegra_rt5640_mic_jack_pins[] = {
-	{
-		.pin = "Mic Jack",
-		.mask = SND_JACK_MICROPHONE,
-	},
-};
 #endif
 
 static int tegra_rt5640_event_int_spk(struct snd_soc_dapm_widget *w,
@@ -400,7 +428,7 @@ static int tegra_rt5640_event_ext_mic(struct snd_soc_dapm_widget *w,
 		return 0;
 
 	gpio_set_value_cansleep(pdata->gpio_ext_mic_en,
-				SND_SOC_DAPM_EVENT_ON(event));
+				!SND_SOC_DAPM_EVENT_ON(event));
 
 	return 0;
 }
@@ -484,8 +512,8 @@ static int tegra_rt5640_init(struct snd_soc_pcm_runtime *rtd)
 		}
 		machine->gpio_requested |= GPIO_EXT_MIC_EN;
 
-		/* Enable ext mic; enable signal is active-low */
-		gpio_direction_output(pdata->gpio_ext_mic_en, 0);
+		/* Disable ext mic; enable signal is active-low */
+		gpio_direction_output(pdata->gpio_ext_mic_en, 1);
 	}
 
 	if (gpio_is_valid(pdata->gpio_hp_det)) {
@@ -505,6 +533,9 @@ static int tegra_rt5640_init(struct snd_soc_pcm_runtime *rtd)
 					&tegra_rt5640_hp_jack_gpio);
 		machine->gpio_requested |= GPIO_HP_DET;
 	}
+
+	machine->bias_level = SND_SOC_BIAS_STANDBY;
+	machine->clock_enabled = 1;
 
 	ret = snd_soc_add_controls(codec, cardhu_controls,
 			ARRAY_SIZE(cardhu_controls));
@@ -550,16 +581,64 @@ static struct snd_soc_dai_link tegra_rt5640_dai[] = {
 		.stream_name = "BT SCO PCM",
 		.codec_name = "spdif-dit.1",
 		.platform_name = "tegra-pcm-audio",
-		.cpu_dai_name = "tegra30-i2s.4",
+		.cpu_dai_name = "tegra30-i2s.3",
 		.codec_dai_name = "dit-hifi",
 		.ops = &tegra_rt5640_bt_sco_ops,
 	},
 };
 
+static int tegra_rt5640_resume_pre(struct snd_soc_card *card)
+{
+	int val;
+	struct snd_soc_jack_gpio *gpio = &tegra_rt5640_hp_jack_gpio;
+
+	if (gpio_is_valid(gpio->gpio)) {
+		val = gpio_get_value(gpio->gpio);
+		val = gpio->invert ? !val : val;
+		snd_soc_jack_report(gpio->jack, val, gpio->report);
+	}
+
+	return 0;
+}
+
+static int tegra_rt5640_set_bias_level(struct snd_soc_card *card,
+	struct snd_soc_dapm_context *dapm, enum snd_soc_bias_level level)
+{
+	struct tegra_rt5640 *machine = snd_soc_card_get_drvdata(card);
+
+	if (machine->bias_level == SND_SOC_BIAS_OFF &&
+		level != SND_SOC_BIAS_OFF && (!machine->clock_enabled)) {
+		machine->clock_enabled = 1;
+		tegra_asoc_utils_clk_enable(&machine->util_data);
+		machine->bias_level = level;
+	}
+
+	return 0;
+}
+
+static int tegra_rt5640_set_bias_level_post(struct snd_soc_card *card,
+	struct snd_soc_dapm_context *dapm, enum snd_soc_bias_level level)
+{
+	struct tegra_rt5640 *machine = snd_soc_card_get_drvdata(card);
+
+	if (machine->bias_level != SND_SOC_BIAS_OFF &&
+		level == SND_SOC_BIAS_OFF && machine->clock_enabled) {
+		machine->clock_enabled = 0;
+		tegra_asoc_utils_clk_disable(&machine->util_data);
+	}
+
+	machine->bias_level = level;
+
+	return 0 ;
+}
+
 static struct snd_soc_card snd_soc_tegra_rt5640 = {
 	.name = "tegra-rt5640",
 	.dai_link = tegra_rt5640_dai,
 	.num_links = ARRAY_SIZE(tegra_rt5640_dai),
+	.resume_pre = tegra_rt5640_resume_pre,
+	.set_bias_level = tegra_rt5640_set_bias_level,
+	.set_bias_level_post = tegra_rt5640_set_bias_level_post,
 };
 
 static __devinit int tegra_rt5640_driver_probe(struct platform_device *pdev)
@@ -588,7 +667,7 @@ static __devinit int tegra_rt5640_driver_probe(struct platform_device *pdev)
 
 	machine->pdata = pdata;
 
-	ret = tegra_asoc_utils_init(&machine->util_data, &pdev->dev);
+	ret = tegra_asoc_utils_init(&machine->util_data, &pdev->dev, card);
 	if (ret)
 		goto err_free_machine;
 
@@ -617,7 +696,7 @@ static __devinit int tegra_rt5640_driver_probe(struct platform_device *pdev)
 	card->dev = &pdev->dev;
 	platform_set_drvdata(pdev, card);
 	snd_soc_card_set_drvdata(card, machine);
-
+	card->dapm.idle_bias_off = 1;
 	ret = snd_soc_register_card(card);
 	if (ret) {
 		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",

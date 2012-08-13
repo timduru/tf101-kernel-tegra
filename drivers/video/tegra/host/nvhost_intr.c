@@ -3,33 +3,30 @@
  *
  * Tegra Graphics Host Interrupt Management
  *
- * Copyright (c) 2010-2011, NVIDIA Corporation.
+ * Copyright (c) 2010-2012, NVIDIA Corporation.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
+ * This program is distributed in the hope it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "nvhost_intr.h"
 #include "dev.h"
+#include "nvhost_acm.h"
 #include <linux/interrupt.h>
 #include <linux/slab.h>
 #include <linux/irq.h>
 #include <trace/events/nvhost.h>
-
-
-
-
+#include "nvhost_channel.h"
+#include "nvhost_hwctx.h"
 
 /*** Wait list management ***/
 
@@ -118,11 +115,11 @@ void reset_threshold_interrupt(struct nvhost_intr *intr,
 {
 	u32 thresh = list_first_entry(head,
 				struct nvhost_waitlist, list)->thresh;
-	BUG_ON(!(intr_op(intr).set_syncpt_threshold &&
-		 intr_op(intr).enable_syncpt_intr));
+	BUG_ON(!(intr_op().set_syncpt_threshold &&
+		 intr_op().enable_syncpt_intr));
 
-	intr_op(intr).set_syncpt_threshold(intr, id, thresh);
-	intr_op(intr).enable_syncpt_intr(intr, id);
+	intr_op().set_syncpt_threshold(intr, id, thresh);
+	intr_op().enable_syncpt_intr(intr, id);
 }
 
 
@@ -132,11 +129,11 @@ static void action_submit_complete(struct nvhost_waitlist *waiter)
 	int nr_completed = waiter->count;
 
 	/*  Add nr_completed to trace */
-	trace_nvhost_channel_submit_complete(channel->desc->name,
-			nr_completed);
+	trace_nvhost_channel_submit_complete(channel->dev->name,
+			nr_completed, waiter->thresh);
 
 	nvhost_cdma_update(&channel->cdma);
-	nvhost_module_idle_mult(&channel->mod, nr_completed);
+	nvhost_module_idle_mult(channel->dev, nr_completed);
 }
 
 static void action_ctxsave(struct nvhost_waitlist *waiter)
@@ -144,17 +141,8 @@ static void action_ctxsave(struct nvhost_waitlist *waiter)
 	struct nvhost_hwctx *hwctx = waiter->data;
 	struct nvhost_channel *channel = hwctx->channel;
 
-	if (channel->ctxhandler.save_service)
-		channel->ctxhandler.save_service(hwctx);
-	channel->ctxhandler.put(hwctx);
-}
-
-static void action_ctxrestore(struct nvhost_waitlist *waiter)
-{
-	struct nvhost_hwctx *hwctx = waiter->data;
-	struct nvhost_channel *channel = hwctx->channel;
-
-	channel->ctxhandler.put(hwctx);
+	if (channel->ctxhandler->save_service)
+		channel->ctxhandler->save_service(hwctx);
 }
 
 static void action_wakeup(struct nvhost_waitlist *waiter)
@@ -176,7 +164,6 @@ typedef void (*action_handler)(struct nvhost_waitlist *waiter);
 static action_handler action_handlers[NVHOST_INTR_ACTION_COUNT] = {
 	action_submit_complete,
 	action_ctxsave,
-	action_ctxrestore,
 	action_wakeup,
 	action_wakeup_interruptible,
 };
@@ -276,8 +263,8 @@ int nvhost_intr_add_action(struct nvhost_intr *intr, u32 id, u32 thresh,
 
 	BUG_ON(waiter == NULL);
 
-	BUG_ON(!(intr_op(intr).set_syncpt_threshold &&
-		 intr_op(intr).enable_syncpt_intr));
+	BUG_ON(!(intr_op().set_syncpt_threshold &&
+		 intr_op().enable_syncpt_intr));
 
 	/* initialize a new waiter */
 	INIT_LIST_HEAD(&waiter->list);
@@ -300,8 +287,8 @@ int nvhost_intr_add_action(struct nvhost_intr *intr, u32 id, u32 thresh,
 		spin_unlock(&syncpt->lock);
 
 		mutex_lock(&intr->mutex);
-		BUG_ON(!(intr_op(intr).request_syncpt_irq));
-		err = intr_op(intr).request_syncpt_irq(syncpt);
+		BUG_ON(!(intr_op().request_syncpt_irq));
+		err = intr_op().request_syncpt_irq(syncpt);
 		mutex_unlock(&intr->mutex);
 
 		if (err) {
@@ -316,11 +303,11 @@ int nvhost_intr_add_action(struct nvhost_intr *intr, u32 id, u32 thresh,
 
 	if (add_waiter_to_queue(waiter, &syncpt->wait_head)) {
 		/* added at head of list - new threshold value */
-		intr_op(intr).set_syncpt_threshold(intr, id, thresh);
+		intr_op().set_syncpt_threshold(intr, id, thresh);
 
 		/* added as first waiter - enable interrupt */
 		if (queue_was_empty)
-			intr_op(intr).enable_syncpt_intr(intr, id);
+			intr_op().enable_syncpt_intr(intr, id);
 	}
 
 	spin_unlock(&syncpt->lock);
@@ -359,6 +346,7 @@ int nvhost_intr_init(struct nvhost_intr *intr, u32 irq_gen, u32 irq_sync)
 	u32 nb_pts = host->syncpt.nb_pts;
 
 	mutex_init(&intr->mutex);
+	intr_op().init_host_sync(intr);
 	intr->host_general_irq = irq_gen;
 	intr->host_general_irq_requested = false;
 
@@ -386,17 +374,17 @@ void nvhost_intr_deinit(struct nvhost_intr *intr)
 
 void nvhost_intr_start(struct nvhost_intr *intr, u32 hz)
 {
-	BUG_ON(!(intr_op(intr).init_host_sync &&
-		 intr_op(intr).set_host_clocks_per_usec &&
-		 intr_op(intr).request_host_general_irq));
+	BUG_ON(!(intr_op().init_host_sync &&
+		 intr_op().set_host_clocks_per_usec &&
+		 intr_op().request_host_general_irq));
 
 	mutex_lock(&intr->mutex);
 
-	intr_op(intr).init_host_sync(intr);
-	intr_op(intr).set_host_clocks_per_usec(intr,
+	intr_op().init_host_sync(intr);
+	intr_op().set_host_clocks_per_usec(intr,
 					       (hz + 1000000 - 1)/1000000);
 
-	intr_op(intr).request_host_general_irq(intr);
+	intr_op().request_host_general_irq(intr);
 
 	mutex_unlock(&intr->mutex);
 }
@@ -407,12 +395,12 @@ void nvhost_intr_stop(struct nvhost_intr *intr)
 	struct nvhost_intr_syncpt *syncpt;
 	u32 nb_pts = intr_to_dev(intr)->syncpt.nb_pts;
 
-	BUG_ON(!(intr_op(intr).disable_all_syncpt_intrs &&
-		 intr_op(intr).free_host_general_irq));
+	BUG_ON(!(intr_op().disable_all_syncpt_intrs &&
+		 intr_op().free_host_general_irq));
 
 	mutex_lock(&intr->mutex);
 
-	intr_op(intr).disable_all_syncpt_intrs(intr);
+	intr_op().disable_all_syncpt_intrs(intr);
 
 	for (id = 0, syncpt = intr->syncpt;
 	     id < nb_pts;
@@ -434,7 +422,7 @@ void nvhost_intr_stop(struct nvhost_intr *intr)
 		free_syncpt_irq(syncpt);
 	}
 
-	intr_op(intr).free_host_general_irq(intr);
+	intr_op().free_host_general_irq(intr);
 
 	mutex_unlock(&intr->mutex);
 }

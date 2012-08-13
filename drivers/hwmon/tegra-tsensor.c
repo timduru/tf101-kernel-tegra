@@ -38,7 +38,7 @@
 
 /* macro to enable tsensor hw reset */
 /* FIXME: till tsensor temperature is reliable this should be 0 */
-#define ENABLE_TSENSOR_HW_RESET 0
+#define ENABLE_TSENSOR_HW_RESET 1
 
 /* tsensor instance used for temperature calculation */
 #define TSENSOR_FUSE_REV1	8
@@ -639,6 +639,14 @@ static struct sensor_device_attribute tsensor_nodes[] = {
 	SENSOR_ATTR(tsensor_limits, S_IRUGO | S_IWUSR,
 		tsensor_show_limits, NULL, TSENSOR_LIMITS),
 };
+
+int tsensor_thermal_get_temp_low(struct tegra_tsensor_data *data,
+					long *milli_temp)
+{
+	/* temp to counter below 20C seems to be inaccurate */
+	*milli_temp = 20000;
+	return 0;
+}
 
 int tsensor_thermal_get_temp(struct tegra_tsensor_data *data,
 				long *milli_temp)
@@ -1529,13 +1537,12 @@ static int tsensor_within_limits(struct tegra_tsensor_data *data)
 {
 	int ts_state = get_ts_state(data);
 
-	return (ts_state == TS_LEVEL1) ||
-		(ts_state == TS_LEVEL0 && data->current_lo_limit == 0);
+	return (ts_state == TS_LEVEL1);
 }
 
 static void tsensor_work_func(struct work_struct *work)
 {
-	struct tegra_tsensor_data *data = container_of(work,
+	struct tegra_tsensor_data *data = container_of(to_delayed_work(work),
 		struct tegra_tsensor_data, work);
 
 	if (!data->alert_func)

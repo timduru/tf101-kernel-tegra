@@ -1,20 +1,20 @@
 /*
- $License:
-    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
+	$License:
+	Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-  $
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	$
  */
 
 /**
@@ -307,7 +307,7 @@ static int mma845x_suspend(void *mlsl_handle,
 
 	result = mma845x_set_fsr(mlsl_handle, pdata,
 				&private_data->suspend,
-				TRUE, private_data->suspend.fsr);
+				true, private_data->suspend.fsr);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
@@ -355,7 +355,7 @@ static int mma845x_resume(void *mlsl_handle,
 
 	result = mma845x_set_fsr(mlsl_handle, pdata,
 			&private_data->resume,
-			TRUE, private_data->resume.fsr);
+			true, private_data->resume.fsr);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
@@ -417,20 +417,20 @@ static int mma845x_init(void *mlsl_handle,
 	pdata->private_data = private_data;
 
 	mma845x_set_odr(mlsl_handle, pdata, &private_data->suspend,
-			FALSE, 0);
+			false, 0);
 	mma845x_set_odr(mlsl_handle, pdata, &private_data->resume,
-			FALSE, 200000);
+			false, 200000);
 
 	range = range_fixedpoint_to_long_mg(slave->range);
 	mma845x_set_fsr(mlsl_handle, pdata, &private_data->suspend,
-			FALSE, range);
+			false, range);
 	mma845x_set_fsr(mlsl_handle, pdata, &private_data->resume,
-			FALSE, range);
+			false, range);
 
 	mma845x_set_irq(mlsl_handle, pdata, &private_data->suspend,
-			FALSE, MPU_SLAVE_IRQ_TYPE_NONE);
+			false, MPU_SLAVE_IRQ_TYPE_NONE);
 	mma845x_set_irq(mlsl_handle, pdata, &private_data->resume,
-			FALSE, MPU_SLAVE_IRQ_TYPE_NONE);
+			false, MPU_SLAVE_IRQ_TYPE_NONE);
 	return INV_SUCCESS;
 }
 
@@ -577,7 +577,7 @@ static struct ext_slave_descr mma845x_descr = {
 	.config           = mma845x_config,
 	.get_config       = mma845x_get_config,
 	.name             = "mma845x",
-	.type             = EXT_SLAVE_TYPE_ACCELEROMETER,
+	.type             = EXT_SLAVE_TYPE_ACCEL,
 	.id               = ACCEL_ID_MMA845X,
 	.read_reg         = 0x00,
 	.read_len         = 6,

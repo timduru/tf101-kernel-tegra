@@ -1,20 +1,20 @@
 /*
- $License:
-    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
+	$License:
+	Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-  $
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	$
  */
 
 /**
@@ -60,7 +60,7 @@
 #define LIS3DH_OUT_X_H           (0x29)
 #define LIS3DH_OUT_Y_L           (0x2a)
 #define LIS3DH_OUT_Y_H           (0x2b)
-#define LIS3DH_OUT_Z_L           (0x2b)
+#define LIS3DH_OUT_Z_L           (0x2c)
 #define LIS3DH_OUT_Z_H           (0x2d)
 
 #define LIS3DH_INT1_CFG          (0x30)
@@ -73,7 +73,7 @@
 /* -------------------------------------------------------------------------- */
 
 struct lis3dh_config {
-	unsigned int odr;
+	unsigned long odr;
 	unsigned int fsr;	/* full scale range mg */
 	unsigned int ths;	/* Motion no-motion thseshold mg */
 	unsigned int dur;	/* Motion no-motion duration ms */
@@ -186,17 +186,17 @@ static int lis3dh_set_odr(void *mlsl_handle,
 	unsigned char bits;
 	int result = INV_SUCCESS;
 
-	if (odr > 400000) {
-		config->odr = 1250000;
+	if (odr > 400000L) {
+		config->odr = 1250000L;
 		bits = 0x90;
-	} else if (odr > 200000) {
-		config->odr = 400000;
+	} else if (odr > 200000L) {
+		config->odr = 400000L;
 		bits = 0x70;
-	} else if (odr > 100000) {
-		config->odr = 200000;
+	} else if (odr > 100000L) {
+		config->odr = 200000L;
 		bits = 0x60;
 	} else if (odr > 50000) {
-		config->odr = 100000;
+		config->odr = 100000L;
 		bits = 0x50;
 	} else if (odr > 25000) {
 		config->odr = 50000;
@@ -217,7 +217,7 @@ static int lis3dh_set_odr(void *mlsl_handle,
 
 	config->ctrl_reg1 = bits | (config->ctrl_reg1 & 0xf);
 	lis3dh_set_dur(mlsl_handle, pdata, config, apply, config->dur);
-	MPL_LOGV("ODR: %d, 0x%02x\n", config->odr, (int)config->ctrl_reg1);
+	MPL_LOGV("ODR: %ld, 0x%02x\n", config->odr, (int)config->ctrl_reg1);
 	if (apply)
 		result = inv_serial_single_write(mlsl_handle, pdata->address,
 						 LIS3DH_CTRL_REG1,
@@ -273,8 +273,6 @@ static int lis3dh_suspend(void *mlsl_handle,
 					 LIS3DH_CTRL_REG1,
 					 private_data->suspend.ctrl_reg1);
 
-	result = inv_serial_single_write(mlsl_handle, pdata->address,
-					 LIS3DH_CTRL_REG2, 0x31);
 	reg1 = 0x48;
 	if (private_data->suspend.fsr == 16384)
 		reg1 |= 0x30;
@@ -346,14 +344,6 @@ static int lis3dh_resume(void *mlsl_handle,
 
 	result = inv_serial_single_write(mlsl_handle, pdata->address,
 					 LIS3DH_CTRL_REG4, reg1);
-	if (result) {
-		LOG_RESULT_LOCATION(result);
-		return result;
-	}
-
-	/* Configure high pass filter */
-	result = inv_serial_single_write(mlsl_handle, pdata->address,
-					 LIS3DH_CTRL_REG2, 0x31);
 	if (result) {
 		LOG_RESULT_LOCATION(result);
 		return result;
@@ -441,30 +431,30 @@ static int lis3dh_init(void *mlsl_handle,
 	private_data->resume.mot_int1_cfg = 0x95;
 	private_data->suspend.mot_int1_cfg = 0x2a;
 
-	lis3dh_set_odr(mlsl_handle, pdata, &private_data->suspend, FALSE, 0);
+	lis3dh_set_odr(mlsl_handle, pdata, &private_data->suspend, false, 0);
 	lis3dh_set_odr(mlsl_handle, pdata, &private_data->resume,
-		       FALSE, 200000);
+		       false, 200000L);
 
 	range = range_fixedpoint_to_long_mg(slave->range);
 	lis3dh_set_fsr(mlsl_handle, pdata, &private_data->suspend,
-			FALSE, range);
+			false, range);
 	lis3dh_set_fsr(mlsl_handle, pdata, &private_data->resume,
-			FALSE, range);
+			false, range);
 
 	lis3dh_set_ths(mlsl_handle, pdata, &private_data->suspend,
-			FALSE, 80);
+			false, 80);
 	lis3dh_set_ths(mlsl_handle, pdata, &private_data->resume,
-			FALSE, 40);
+			false, 40);
 
 	lis3dh_set_dur(mlsl_handle, pdata, &private_data->suspend,
-			FALSE, 1000);
+			false, 1000);
 	lis3dh_set_dur(mlsl_handle, pdata, &private_data->resume,
-			FALSE, 2540);
+			false, 2540);
 
 	lis3dh_set_irq(mlsl_handle, pdata, &private_data->suspend,
-			FALSE, MPU_SLAVE_IRQ_TYPE_NONE);
+			false, MPU_SLAVE_IRQ_TYPE_NONE);
 	lis3dh_set_irq(mlsl_handle, pdata, &private_data->resume,
-			FALSE, MPU_SLAVE_IRQ_TYPE_NONE);
+			false, MPU_SLAVE_IRQ_TYPE_NONE);
 
 	result = inv_serial_single_write(mlsl_handle, pdata->address,
 					 LIS3DH_CTRL_REG1, 0x07);
@@ -603,7 +593,7 @@ static struct ext_slave_descr lis3dh_descr = {
 	.config           = lis3dh_config,
 	.get_config       = lis3dh_get_config,
 	.name             = "lis3dh",
-	.type             = EXT_SLAVE_TYPE_ACCELEROMETER,
+	.type             = EXT_SLAVE_TYPE_ACCEL,
 	.id               = ACCEL_ID_LIS3DH,
 	.read_reg         = 0x28 | 0x80, /* 0x80 for burst reads */
 	.read_len         = 6,

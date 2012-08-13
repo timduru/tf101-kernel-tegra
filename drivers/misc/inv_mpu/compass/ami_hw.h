@@ -17,16 +17,16 @@
 #ifndef AMI_HW_H
 #define AMI_HW_H
 
-/* N of /dev/i2c-N. */
 #define	AMI_I2C_BUS_NUM			2
 
 #ifdef	AMI304_MODEL
-/* new Addr=0x0E(Low), old Addr=0x0F(High) */
 #define AMI_I2C_ADDRESS			0x0F
 #else
-/* new Addr=0x0E(Low), old Addr=0x0F(High) */
 #define AMI_I2C_ADDRESS			0x0E
 #endif
+
+#define AMI_GPIO_INT			152
+#define AMI_GPIO_DRDY			153
 
 /* AMI-Sensor Internal Register Address
  *(Please refer to AMI-Sensor Specifications)

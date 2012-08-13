@@ -27,7 +27,7 @@
 #include <linux/pwm_backlight.h>
 #include <asm/atomic.h>
 #include <linux/nvhost.h>
-#include <mach/nvmap.h>
+#include <linux/nvmap.h>
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/dc.h>
@@ -67,37 +67,37 @@ static struct regulator *kai_lvds_vdd_panel;
 
 static tegra_dc_bl_output kai_bl_output_measured = {
 	0, 1, 2, 3, 4, 5, 6, 7,
-	8, 9, 10, 11, 12, 13, 14, 15,
-	16, 17, 18, 19, 20, 21, 22, 23,
-	24, 25, 26, 27, 28, 29, 30, 31,
-	32, 33, 34, 35, 36, 37, 38, 39,
-	40, 41, 42, 43, 44, 45, 46, 47,
-	48, 49, 49, 50, 51, 52, 53, 54,
-	55, 56, 57, 58, 59, 60, 61, 62,
-	63, 64, 65, 66, 67, 68, 69, 70,
-	70, 72, 73, 74, 75, 76, 77, 78,
-	79, 80, 81, 82, 83, 84, 85, 86,
-	87, 88, 89, 90, 91, 92, 93, 94,
-	95, 96, 97, 98, 99, 100, 101, 102,
-	103, 104, 105, 106, 107, 108, 110, 111,
-	112, 113, 114, 115, 116, 117, 118, 119,
-	120, 121, 122, 123, 124, 124, 125, 126,
-	127, 128, 129, 130, 131, 132, 133, 133,
+	7, 8, 9, 10, 11, 12, 13, 14,
+	15, 16, 17, 18, 19, 20, 20, 21,
+	22, 23, 24, 25, 26, 27, 28, 29,
+	30, 31, 32, 32, 34, 34, 36, 36,
+	38, 39, 40, 40, 41, 42, 42, 43,
+	44, 44, 45, 46, 46, 47, 48, 48,
+	49, 50, 50, 51, 52, 53, 54, 54,
+	55, 56, 57, 58, 58, 59, 60, 61,
+	62, 63, 64, 65, 66, 67, 68, 69,
+	70, 71, 72, 72, 73, 74, 75, 76,
+	76, 77, 78, 79, 80, 81, 82, 83,
+	85, 86, 87, 89, 90, 91, 92, 92,
+	93, 94, 95, 96, 96, 97, 98, 99,
+	100, 100, 101, 102, 103, 104, 104, 105,
+	106, 107, 108, 108, 109, 110, 112, 114,
+	116, 118, 120, 121, 122, 123, 124, 125,
+	126, 127, 128, 129, 130, 131, 132, 133,
 	134, 135, 136, 137, 138, 139, 140, 141,
-	142, 143, 144, 145, 146, 147, 148, 148,
-	149, 150, 151, 152, 153, 154, 155, 156,
-	157, 158, 159, 160, 161, 162, 163, 164,
-	165, 166, 167, 168, 169, 170, 171, 172,
-	173, 174, 175, 176, 177, 179, 180, 181,
-	182, 184, 185, 186, 187, 188, 189, 190,
-	191, 192, 193, 194, 195, 196, 197, 198,
-	199, 200, 201, 202, 203, 204, 205, 206,
-	207, 208, 209, 211, 212, 213, 214, 215,
-	216, 217, 218, 219, 220, 221, 222, 223,
-	224, 225, 226, 227, 228, 229, 230, 231,
-	232, 233, 234, 235, 236, 237, 238, 239,
-	240, 241, 242, 243, 244, 245, 246, 247,
-	248, 249, 250, 251, 252, 253, 254, 255
+	142, 143, 144, 145, 146, 147, 148, 149,
+	150, 151, 151, 152, 153, 153, 154, 155,
+	155, 156, 157, 157, 158, 159, 159, 160,
+	162, 164, 166, 168, 170, 172, 174, 176,
+	178, 180, 181, 181, 182, 183, 183, 184,
+	185, 185, 186, 187, 187, 188, 189, 189,
+	190, 191, 192, 193, 194, 195, 196, 197,
+	198, 199, 200, 201, 201, 202, 203, 203,
+	204, 205, 205, 206, 207, 207, 208, 209,
+	209, 210, 211, 211, 212, 212, 213, 213,
+	214, 215, 215, 216, 216, 217, 217, 218,
+	219, 219, 220, 222, 226, 230, 232, 234,
+	236, 238, 240, 244, 248, 251, 253, 255
 };
 
 static p_tegra_dc_bl_output bl_output;
@@ -572,6 +572,7 @@ static int kai_disp1_check_fb(struct device *dev, struct fb_info *info)
 }
 #endif
 
+#if defined(CONFIG_TEGRA_NVMAP)
 static struct nvmap_platform_carveout kai_carveouts[] = {
 	[0] = NVMAP_HEAP_CARVEOUT_IRAM_INIT,
 	[1] = {
@@ -595,12 +596,11 @@ static struct platform_device kai_nvmap_device = {
 		.platform_data = &kai_nvmap_data,
 	},
 };
-
+#endif
 
 static struct platform_device *kai_gfx_devices[] __initdata = {
+#if defined(CONFIG_TEGRA_NVMAP)
 	&kai_nvmap_device,
-#ifdef CONFIG_TEGRA_GRHOST
-	&tegra_grhost_device,
 #endif
 	&tegra_pwfm0_device,
 	&kai_backlight_device,
@@ -620,11 +620,21 @@ static void kai_panel_early_suspend(struct early_suspend *h)
 		fb_blank(registered_fb[0], FB_BLANK_POWERDOWN);
 	if (num_registered_fb > 1)
 		fb_blank(registered_fb[1], FB_BLANK_NORMAL);
+#ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
+	cpufreq_store_default_gov();
+	if (cpufreq_change_gov(cpufreq_conservative_gov))
+		pr_err("Early_suspend: Error changing governor to %s\n",
+				cpufreq_conservative_gov);
+#endif
 }
 
 static void kai_panel_late_resume(struct early_suspend *h)
 {
 	unsigned i;
+#ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
+	if (cpufreq_restore_default_gov())
+		pr_err("Early_suspend: Unable to restore governor\n");
+#endif
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
 }
@@ -638,9 +648,10 @@ int __init kai_panel_init(void)
 
 	tegra_get_board_info(&board_info);
 
+#if defined(CONFIG_TEGRA_NVMAP)
 	kai_carveouts[1].base = tegra_carveout_start;
 	kai_carveouts[1].size = tegra_carveout_size;
-
+#endif
 	gpio_request(kai_lvds_avdd_en, "lvds_avdd_en");
 	gpio_direction_output(kai_lvds_avdd_en, 1);
 	tegra_gpio_enable(kai_lvds_avdd_en);
@@ -653,7 +664,7 @@ int __init kai_panel_init(void)
 	gpio_direction_output(kai_lvds_rst, 1);
 	tegra_gpio_enable(kai_lvds_rst);
 
-	if (board_info.fab & BOARD_FAB_A00) {
+	if (board_info.fab == BOARD_FAB_A00) {
 		gpio_request(kai_lvds_rs_a00, "lvds_rs");
 		gpio_direction_output(kai_lvds_rs_a00, 0);
 		tegra_gpio_enable(kai_lvds_rs_a00);
@@ -680,6 +691,12 @@ int __init kai_panel_init(void)
 	kai_panel_early_suspender.resume = kai_panel_late_resume;
 	kai_panel_early_suspender.level = EARLY_SUSPEND_LEVEL_DISABLE_FB;
 	register_early_suspend(&kai_panel_early_suspender);
+#endif
+
+#ifdef CONFIG_TEGRA_GRHOST
+	err = nvhost_device_register(&tegra_grhost_device);
+	if (err)
+		return err;
 #endif
 
 	err = platform_add_devices(kai_gfx_devices,

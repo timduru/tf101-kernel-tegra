@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-enterprise-panel.c
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 #include <linux/tegra_pwm_bl.h>
 #include <asm/atomic.h>
 #include <linux/nvhost.h>
-#include <mach/nvmap.h>
+#include <linux/nvmap.h>
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/dc.h>
@@ -62,7 +62,9 @@
 #define enterprise_lcd_te		TEGRA_GPIO_PJ1
 
 #ifdef CONFIG_TEGRA_DC
-static struct regulator *enterprise_dsi_reg = NULL;
+static struct regulator *enterprise_dsi_reg;
+static bool dsi_regulator_status;
+static struct regulator *enterprise_lcd_reg;
 
 static struct regulator *enterprise_hdmi_reg;
 static struct regulator *enterprise_hdmi_pll;
@@ -71,7 +73,7 @@ static struct regulator *enterprise_hdmi_vddio;
 
 static atomic_t sd_brightness = ATOMIC_INIT(255);
 
-static tegra_dc_bl_output enterprise_bl_output_measured = {
+static tegra_dc_bl_output enterprise_bl_output_measured_a02 = {
 	1, 5, 9, 10, 11, 12, 12, 13,
 	13, 14, 14, 15, 15, 16, 16, 17,
 	17, 18, 18, 19, 19, 20, 21, 21,
@@ -106,6 +108,41 @@ static tegra_dc_bl_output enterprise_bl_output_measured = {
 	183, 184, 185, 186, 186, 187, 188, 188
 };
 
+static tegra_dc_bl_output enterprise_bl_output_measured_a03 = {
+	0, 1, 2, 3, 4, 5, 6, 7,
+	8, 9, 10, 12, 13, 14, 15, 16,
+	17, 19, 20, 21, 22, 22, 23, 24,
+	25, 26, 27, 28, 29, 29, 30, 32,
+	33, 34, 35, 36, 38, 39, 40, 42,
+	43, 44, 46, 47, 49, 50, 51, 52,
+	53, 54, 55, 56, 57, 58, 59, 60,
+	61, 63, 64, 66, 67, 69, 70, 71,
+	72, 73, 74, 75, 76, 77, 78, 79,
+	80, 81, 82, 83, 84, 84, 85, 86,
+	87, 88, 89, 90, 91, 92, 93, 94,
+	95, 96, 97, 98, 99, 100, 101, 102,
+	103, 104, 105, 106, 107, 108, 109, 110,
+	110, 111, 112, 113, 113, 114, 115, 116,
+	116, 117, 118, 118, 119, 120, 121, 122,
+	123, 124, 125, 126, 127, 128, 129, 130,
+	130, 131, 132, 133, 134, 135, 136, 137,
+	138, 139, 140, 141, 142, 143, 144, 145,
+	146, 147, 148, 149, 150, 151, 152, 153,
+	154, 155, 156, 157, 158, 159, 160, 160,
+	161, 162, 163, 163, 164, 165, 165, 166,
+	167, 168, 168, 169, 170, 171, 172, 173,
+	174, 175, 176, 176, 177, 178, 179, 180,
+	181, 182, 183, 184, 185, 186, 187, 188,
+	189, 190, 191, 191, 192, 193, 194, 194,
+	195, 196, 197, 197, 198, 199, 199, 200,
+	202, 203, 205, 206, 208, 209, 211, 212,
+	213, 215, 216, 218, 219, 220, 221, 222,
+	223, 224, 225, 226, 227, 228, 229, 230,
+	231, 232, 233, 234, 235, 236, 237, 238,
+	239, 240, 241, 243, 244, 245, 247, 248,
+	250, 251, 251, 252, 253, 254, 254, 255,
+};
+
 static p_tegra_dc_bl_output bl_output;
 
 static bool kernel_1st_panel_init = true;
@@ -113,7 +150,6 @@ static bool kernel_1st_panel_init = true;
 static int enterprise_backlight_notify(struct device *unused, int brightness)
 {
 	int cur_sd_brightness = atomic_read(&sd_brightness);
-	int orig_brightness = brightness;
 
 	/* SD brightness is a percentage, 8-bit value. */
 	brightness = (brightness * cur_sd_brightness) / 255;
@@ -418,26 +454,83 @@ static struct tegra_dc_platform_data enterprise_disp2_pdata = {
 	.emc_clk_rate	= 300000000,
 };
 
-static int enterprise_dsi_panel_enable(void)
+static int avdd_dsi_csi_rail_enable(void)
 {
 	int ret;
+
+	if (dsi_regulator_status == true)
+		return 0;
 
 	if (enterprise_dsi_reg == NULL) {
 		enterprise_dsi_reg = regulator_get(NULL, "avdd_dsi_csi");
 		if (IS_ERR_OR_NULL(enterprise_dsi_reg)) {
 			pr_err("dsi: Could not get regulator avdd_dsi_csi\n");
-				enterprise_dsi_reg = NULL;
-				return PTR_ERR(enterprise_dsi_reg);
+			enterprise_dsi_reg = NULL;
+			return PTR_ERR(enterprise_dsi_reg);
 		}
 	}
 	ret = regulator_enable(enterprise_dsi_reg);
 	if (ret < 0) {
-		printk(KERN_ERR
-			"DSI regulator avdd_dsi_csi could not be enabled\n");
+		pr_err("DSI regulator avdd_dsi_csi could not be enabled\n");
 		return ret;
 	}
+	dsi_regulator_status = true;
+	return 0;
+}
+
+static int avdd_dsi_csi_rail_disable(void)
+{
+	int ret;
+
+	if (dsi_regulator_status == false)
+		return 0;
+
+	if (enterprise_dsi_reg == NULL) {
+		pr_warn("%s: unbalanced disable\n", __func__);
+		return -EIO;
+	}
+
+	ret = regulator_disable(enterprise_dsi_reg);
+	if (ret < 0) {
+		pr_err("DSI regulator avdd_dsi_csi cannot be disabled\n");
+		return ret;
+	}
+	dsi_regulator_status = false;
+	return 0;
+}
+
+static int enterprise_dsi_panel_enable(void)
+{
+	int ret;
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+
+	ret = avdd_dsi_csi_rail_enable();
+	if (ret)
+		return ret;
 
 #if DSI_PANEL_RESET
+
+	if (board_info.fab >= BOARD_FAB_A03) {
+		if (enterprise_lcd_reg == NULL) {
+			enterprise_lcd_reg = regulator_get(NULL, "lcd_vddio_en");
+			if (IS_ERR_OR_NULL(enterprise_lcd_reg)) {
+				pr_err("Could not get regulator lcd_vddio_en\n");
+				ret = PTR_ERR(enterprise_lcd_reg);
+				enterprise_lcd_reg = NULL;
+				return ret;
+			}
+		}
+		if (enterprise_lcd_reg != NULL) {
+			ret = regulator_enable(enterprise_lcd_reg);
+			if (ret < 0) {
+				pr_err("Could not enable lcd_vddio_en\n");
+				return ret;
+			}
+		}
+	}
+
 	if (kernel_1st_panel_init != true) {
 		ret = gpio_request(enterprise_dsi_panel_reset, "panel reset");
 		if (ret < 0)
@@ -462,6 +555,9 @@ static int enterprise_dsi_panel_enable(void)
 
 static int enterprise_dsi_panel_disable(void)
 {
+	if (enterprise_lcd_reg != NULL)
+		regulator_disable(enterprise_lcd_reg);
+
 #if DSI_PANEL_RESET
 	if (kernel_1st_panel_init != true) {
 		tegra_gpio_disable(enterprise_dsi_panel_reset);
@@ -500,8 +596,8 @@ static void enterprise_stereo_set_orientation(int mode)
 #ifdef CONFIG_TEGRA_DC
 static int enterprise_dsi_panel_postsuspend(void)
 {
-	/* Do nothing for enterprise dsi panel */
-	return 0;
+	/* Disable enterprise dsi rail */
+	return avdd_dsi_csi_rail_disable();
 }
 #endif
 
@@ -545,11 +641,17 @@ struct tegra_dsi_out enterprise_dsi = {
 	.n_data_lanes = 2,
 	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
 #if(DC_CTRL_MODE & TEGRA_DC_OUT_ONE_SHOT_MODE)
-	/* For one-shot mode, mismatch between freq of DC and TE signal
-	 * may cause frame drop. We increase refreash rate a little bit
-	 * more than target value to avoid missing TE signal.
+	/* For one-shot mode, actual refresh rate is decided by the
+	 * frequency of TE signal. Although the frequency of TE is
+	 * expected running at rated_refresh_rate (typically 60Hz),
+	 * it may vary. Mismatch between freq of DC and TE signal
+	 * would cause frame drop. We increase refresh_rate to the
+	 * value larger than maximum TE frequency to avoid missing
+	 * any TE signal. The value of refresh_rate is also used to
+	 * calculate the pixel clock.
 	 */
 	.refresh_rate = 66,
+	.rated_refresh_rate = 60,
 #else
 	.refresh_rate = 60,
 #endif
@@ -694,9 +796,6 @@ static struct platform_device *enterprise_gfx_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_NVMAP)
 	&enterprise_nvmap_device,
 #endif
-#ifdef CONFIG_TEGRA_GRHOST
-	&tegra_grhost_device,
-#endif
 	&tegra_pwfm0_device,
 };
 
@@ -712,32 +811,27 @@ struct early_suspend enterprise_panel_early_suspender;
 
 static void enterprise_panel_early_suspend(struct early_suspend *h)
 {
-	unsigned i;
-
 	/* power down LCD, add use a black screen for HDMI */
 	if (num_registered_fb > 0)
 		fb_blank(registered_fb[0], FB_BLANK_POWERDOWN);
 	if (num_registered_fb > 1)
 		fb_blank(registered_fb[1], FB_BLANK_NORMAL);
+
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_save_default_governor();
-	cpufreq_set_conservative_governor();
-	cpufreq_set_conservative_governor_param("up_threshold",
-			SET_CONSERVATIVE_GOVERNOR_UP_THRESHOLD);
-
-	cpufreq_set_conservative_governor_param("down_threshold",
-			SET_CONSERVATIVE_GOVERNOR_DOWN_THRESHOLD);
-
-	cpufreq_set_conservative_governor_param("freq_step",
-			SET_CONSERVATIVE_GOVERNOR_FREQ_STEP);
+	cpufreq_store_default_gov();
+	if (cpufreq_change_gov(cpufreq_conservative_gov))
+		pr_err("Early_suspend: Error changing governor to %s\n",
+				cpufreq_conservative_gov);
 #endif
 }
 
 static void enterprise_panel_late_resume(struct early_suspend *h)
 {
 	unsigned i;
+
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_restore_default_governor();
+	if (cpufreq_restore_default_gov())
+		pr_err("Early_suspend: Unable to restore governor\n");
 #endif
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
@@ -748,11 +842,18 @@ int __init enterprise_panel_init(void)
 {
 	int err;
 	struct resource __maybe_unused *res;
+	struct board_info board_info;
 
-	bl_output = enterprise_bl_output_measured;
+	tegra_get_board_info(&board_info);
 
-	if (WARN_ON(ARRAY_SIZE(enterprise_bl_output_measured) != 256))
-		pr_err("bl_output array does not have 256 elements\n");
+	BUILD_BUG_ON(ARRAY_SIZE(enterprise_bl_output_measured_a03) != 256);
+	BUILD_BUG_ON(ARRAY_SIZE(enterprise_bl_output_measured_a02) != 256);
+
+	if (board_info.fab >= BOARD_FAB_A03) {
+		enterprise_disp1_backlight_data.clk_div = 0x1D;
+		bl_output = enterprise_bl_output_measured_a03;
+	} else
+		bl_output = enterprise_bl_output_measured_a02;
 
 	enterprise_dsi.chip_id = tegra_get_chipid();
 	enterprise_dsi.chip_rev = tegra_get_revision();
@@ -787,6 +888,12 @@ int __init enterprise_panel_init(void)
 	enterprise_panel_early_suspender.resume = enterprise_panel_late_resume;
 	enterprise_panel_early_suspender.level = EARLY_SUSPEND_LEVEL_DISABLE_FB;
 	register_early_suspend(&enterprise_panel_early_suspender);
+#endif
+
+#ifdef CONFIG_TEGRA_GRHOST
+	err = nvhost_device_register(&tegra_grhost_device);
+	if (err)
+		return err;
 #endif
 
 	err = platform_add_devices(enterprise_gfx_devices,
