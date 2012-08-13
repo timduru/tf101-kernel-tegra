@@ -448,11 +448,15 @@ static int __devinit mrstouch_read_pmic_id(uint *vendor, uint *rev)
  */
 static int __devinit mrstouch_chan_parse(struct mrstouch_dev *tsdev)
 {
-	int found = 0;
-	int err, i;
+	int err, i, found;
 	u8 r8;
 
+	found = -1;
+
 	for (i = 0; i < MRSTOUCH_MAX_CHANNELS; i++) {
+		if (found >= 0)
+			break;
+
 		err = intel_scu_ipc_ioread8(PMICADDR0 + i, &r8);
 		if (err)
 			return err;
@@ -462,15 +466,16 @@ static int __devinit mrstouch_chan_parse(struct mrstouch_dev *tsdev)
 			break;
 		}
 	}
+	if (found < 0)
+		return 0;
 
 	if (tsdev->vendor == PMIC_VENDOR_FS) {
-		if (found > MRSTOUCH_MAX_CHANNELS - 18)
+		if (found && found > (MRSTOUCH_MAX_CHANNELS - 18))
 			return -ENOSPC;
 	} else {
-		if (found > MRSTOUCH_MAX_CHANNELS - 4)
+		if (found && found > (MRSTOUCH_MAX_CHANNELS - 4))
 			return -ENOSPC;
 	}
-
 	return found;
 }
 
