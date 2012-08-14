@@ -720,7 +720,8 @@ static int __init tf101_gps_init(void)
 #ifdef CONFIG_USB_SUPPORT
 static void tf101_usb_init(void)
 {
-	tegra_usb_phy_init(tegra_usb_phy_pdata, ARRAY_SIZE(tegra_usb_phy_pdata));
+	//tegra_usb_phy_init(tegra_usb_phy_pdata, ARRAY_SIZE(tegra_usb_phy_pdata));
+        tegra_usb_phy_init(ARRAY_SIZE(tegra_usb_phy_pdata));
 
 	/* OTG should be the first to be registered */
 	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
