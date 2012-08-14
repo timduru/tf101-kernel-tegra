@@ -50,6 +50,8 @@ struct tegra_utmi_config {
 	u8 xcvr_use_fuses;
 };
 
+
+
 /**
  * configuration structure for setting up utmip phy
  */
@@ -175,6 +177,38 @@ struct tegra_usb_platform_data {
 struct tegra_usb_otg_data {
 	struct platform_device *ehci_device;
 	struct tegra_usb_platform_data *ehci_pdata;
+};
+
+/**
+ * import old tegra_usb.h definitions for use with board-tf101.c
+ */
+enum tegra_usb_operating_modes {
+	TEGRA_USB_DEVICE,
+	TEGRA_USB_HOST,
+	TEGRA_USB_OTG,
+};
+
+enum tegra_usb_phy_type {
+	TEGRA_USB_PHY_TYPE_UTMIP = 0,
+	TEGRA_USB_PHY_TYPE_LINK_ULPI = 1,
+	TEGRA_USB_PHY_TYPE_NULL_ULPI = 2,
+	TEGRA_USB_PHY_TYPE_HSIC = 3,
+	TEGRA_USB_PHY_TYPE_ICUSB = 4,
+};
+
+struct tegra_ehci_platform_data {
+	enum tegra_usb_operating_modes operating_mode;
+	/* power down the phy on bus suspend */
+	int power_down_on_bus_suspend;
+	int hotplug;
+	int default_enable;
+	void *phy_config;
+	enum tegra_usb_phy_type phy_type;
+};
+
+struct tegra_otg_platform_data {
+	struct platform_device *ehci_device;
+	struct tegra_ehci_platform_data *ehci_pdata;
 };
 
 #endif /* _TEGRA_USB_H_ */
