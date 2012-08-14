@@ -211,4 +211,14 @@ struct tegra_otg_platform_data {
 	struct tegra_ehci_platform_data *ehci_pdata;
 };
 
+/**
+ * import plat_data for tegra_usb_phy again to make board-tf101.c happy
+ */
+struct usb_phy_plat_data {
+	int instance;
+	int vbus_irq;
+	int vbus_gpio;
+	char * vbus_reg_supply;
+};
+
 #endif /* _TEGRA_USB_H_ */
