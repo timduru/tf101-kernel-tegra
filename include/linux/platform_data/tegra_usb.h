@@ -51,9 +51,25 @@ struct tegra_utmi_config {
 };
 
 /**
+ * configuration structure for setting up utmip phy
+ */
+struct tegra_utmip_config {
+	u8 hssync_start_delay;
+	u8 elastic_limit;
+	u8 idle_wait_delay;
+	u8 term_range_adj;
+	u8 xcvr_setup;
+	signed char xcvr_setup_offset;
+	u8 xcvr_use_fuses;
+	u8 xcvr_lsfslew;
+	u8 xcvr_lsrslew;
+};
+
+/**
  * configuration structure for setting up ulpi phy
  */
 struct tegra_ulpi_config {
+        int reset_gpio; // l.150 error
 	u8 shadow_clk_delay;
 	u8 clock_out_delay;
 	u8 data_trimmer;
@@ -71,6 +87,23 @@ struct tegra_hsic_config {
 	u8 term_range_adj;
 	u8 elastic_underrun_limit;
 	u8 elastic_overrun_limit;
+};
+
+/**
+ * configuration structure for setting up uhsic phy
+ */
+struct tegra_uhsic_config {
+	int enable_gpio;
+	int reset_gpio;
+	u8 sync_start_delay;
+	u8 idle_wait_delay;
+	u8 term_range_adj;
+	u8 elastic_underrun_limit;
+	u8 elastic_overrun_limit;
+	int (*postsuspend)(void);
+	int (*preresume)(void);
+	int (*usb_phy_ready)(void);
+	int (*post_phy_off)(void);
 };
 
 /**

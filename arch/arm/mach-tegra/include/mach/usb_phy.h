@@ -18,6 +18,12 @@
 #ifndef __MACH_USB_PHY_H
 #define __MACH_USB_PHY_H
 
+#include <linux/clk.h>
+#include <linux/regulator/consumer.h>
+#include <linux/usb/otg.h>
+#include <linux/platform_data/tegra_usb.h>
+
+
 /**
  * Tegra USB phy opaque handle
  */
