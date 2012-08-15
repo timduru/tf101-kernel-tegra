@@ -336,8 +336,12 @@ T_TLPX_NS_DEFAULT, clk_ns, T_TLPX_HW_INC))
 (DSI_CONVERT_T_PHY_NS_TO_T_PHY( \
 T_CLKPREPARE_NS_DEFAULT, clk_ns, T_CLKPREPARE_HW_INC))
 
-#define T_CLKPRE_DEFAULT	0x1
-#define T_WAKEUP_DEFAULT	0x7f
+/* #define T_CLKPRE_DEFAULT	0x1
+#define T_WAKEUP_DEFAULT	0x7f */
+
+#define T_CLKPRE_DEFAULT(clk_ns)		1 // Integrate own values
+/* Minimum ULPM wakeup time as per the spec is 1msec */
+#define T_WAKEUP_DEFAULT(clk_ns)		(2*1000*1000 / (clk_ns))
 
 #define T_TAGO_DEFAULT(clk_ns) \
 (DSI_CONVERT_T_PHY_NS_TO_T_PHY( \

@@ -29,7 +29,7 @@
 #include <linux/types.h>
 
 #include <mach/clk.h>
-#include <linux/nvmap.h>
+#include <mach/nvmap.h> // FK Compilation Errors !
 
 #include "../../../../video/tegra/nvmap/nvmap.h"
 

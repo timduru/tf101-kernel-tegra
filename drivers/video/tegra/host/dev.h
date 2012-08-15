@@ -22,8 +22,11 @@
 #define __NVHOST_DEV_H
 
 #include <linux/cdev.h>
+#include "nvhost_acm.h"
 #include "nvhost_syncpt.h"
 #include "nvhost_intr.h"
+#include "nvhost_cpuaccess.h"
+// #include "nvhost_channel.h"
 #include "chip_support.h"
 
 #define TRACE_MAX_LENGTH	128U
@@ -43,6 +46,7 @@ struct nvhost_master {
 	struct nvmap_client *nvmap;
 	struct nvhost_intr intr;
 	struct nvhost_device *dev;
+        struct nvhost_module mod; /* Resolve compile errors */
 	atomic_t clientid;
 };
 

@@ -105,8 +105,19 @@ struct nvmap_handle_ref {
 struct nvmap_client *nvmap_create_client(struct nvmap_device *dev,
 					 const char *name);
 
+/* struct nvmap_handle_ref *nvmap_alloc(struct nvmap_client *client, size_t size,
+				     size_t align, unsigned int flags); */ // New struct fails at compiling
+
+/****************************************************************************************************************/
+
 struct nvmap_handle_ref *nvmap_alloc(struct nvmap_client *client, size_t size,
-				     size_t align, unsigned int flags);
+				     size_t align, unsigned int flags,
+				     unsigned int heap_mask);
+
+struct nvmap_handle_ref *nvmap_duplicate_handle_id(struct nvmap_client *client,
+						   unsigned long id);
+
+/****************************************************************************************************************/ 
 
 void nvmap_free(struct nvmap_client *client, struct nvmap_handle_ref *r);
 

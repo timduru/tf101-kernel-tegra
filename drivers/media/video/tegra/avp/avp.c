@@ -38,11 +38,11 @@
 #include <linux/types.h>
 #include <linux/uaccess.h>
 #include <linux/workqueue.h>
+#include <mach/nvmap.h> // FK Compilation Errors !
 
 #include <mach/clk.h>
 #include <mach/io.h>
 #include <mach/iomap.h>
-#include <linux/nvmap.h>
 #include <mach/legacy_irq.h>
 #include <mach/hardware.h>
 

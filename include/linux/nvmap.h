@@ -20,6 +20,15 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+
+#include <linux/list.h>
+#include <linux/mm.h>
+#include <linux/mutex.h>
+#include <linux/sched.h>
+#include <linux/wait.h>
+#include <linux/atomic.h>
+//#include <mach/nvmap.h>
+
 #include <linux/ioctl.h>
 #include <linux/file.h>
 #include <linux/rbtree.h>
@@ -56,6 +65,8 @@
 struct nvmap_handle;
 struct nvmap_client;
 struct nvmap_device;
+
+#define nvmap_ref_to_id(_ref)		((unsigned long)(_ref)->handle)
 
 #define nvmap_ref_to_handle(_ref) (*(struct nvmap_handle **)(_ref))
 /* Convert User space handle to Kernel. */
@@ -104,8 +115,11 @@ struct nvmap_client *nvmap_create_client(struct nvmap_device *dev,
 					 const char *name);
 
 struct nvmap_handle_ref *nvmap_alloc(struct nvmap_client *client, size_t size,
+				     size_t align, unsigned int flags);
+
+/* struct nvmap_handle_ref *nvmap_alloc(struct nvmap_client *client, size_t size,
 				     size_t align, unsigned int flags,
-				     unsigned int heap_mask);
+				     unsigned int heap_mask); */ // Compilation fix
 
 void nvmap_free(struct nvmap_client *client, struct nvmap_handle_ref *r);
 
@@ -151,6 +165,44 @@ struct nvmap_platform_data {
 	const struct nvmap_platform_carveout *carveouts;
 	unsigned int nr_carveouts;
 };
+
+/**********************************************************************************/
+
+struct nvmap_handle_ref *nvmap_alloc_iovm(struct nvmap_client *client,
+	size_t size, size_t align, unsigned int flags, unsigned int iova_start);
+
+struct nvmap_handle_ref *nvmap_create_handle(struct nvmap_client *client,
+					     size_t size);
+
+struct nvmap_handle *nvmap_get_handle_id(struct nvmap_client *client,
+					 unsigned long id);
+
+int nvmap_alloc_handle_id(struct nvmap_client *client,
+			  unsigned long id, unsigned int heap_mask,
+			  size_t align, unsigned int flags);
+
+void _nvmap_handle_free(struct nvmap_handle *h);
+
+static inline void nvmap_handle_put(struct nvmap_handle *h)
+{
+	int cnt = atomic_dec_return(&h->ref);
+
+	if (WARN_ON(cnt < 0)) {
+		pr_err("%s: %s put to negative references\n",
+			__func__, current->comm);
+	} else if (cnt == 0)
+		_nvmap_handle_free(h);
+}
+
+void nvmap_free_handle_id(struct nvmap_client *c, unsigned long id);
+
+int nvmap_pin_ids(struct nvmap_client *client,
+		  unsigned int nr, const unsigned long *ids);
+
+void nvmap_unpin_ids(struct nvmap_client *priv,
+		     unsigned int nr, const unsigned long *ids);
+
+/**********************************************************************************/
 
 extern struct nvmap_device *nvmap_dev;
 
