@@ -532,9 +532,9 @@ static void tegra_dsi_get_phy_timing(struct tegra_dc_dsi_data *dsi,
 			(dsi->info.phy_timing.t_datzero_ns / clk_ns) :
 			(T_DATZERO_DEFAULT(clk_ns));
 
-	phy_timing_clk->t_hsprepare = dsi->info.phy_timing.t_hsprepr_ns ? // Fix stupid Nvidia typo
+	phy_timing_clk->t_hsprepr = dsi->info.phy_timing.t_hsprepr_ns ?
 			(dsi->info.phy_timing.t_hsprepr_ns / clk_ns) :
-			(T_HSPREPARE_DEFAULT(clk_ns));
+			(T_HSPREPR_DEFAULT(clk_ns));
 
 	phy_timing_clk->t_clktrail = dsi->info.phy_timing.t_clktrail_ns ?
 				(dsi->info.phy_timing.t_clktrail_ns / clk_ns) :
@@ -571,7 +571,7 @@ static void tegra_dsi_set_phy_timing(struct tegra_dc_dsi_data *dsi)
 	val = DSI_PHY_TIMING_0_THSDEXIT(phy_timing.t_hsdexit) |
 			DSI_PHY_TIMING_0_THSTRAIL(phy_timing.t_hstrail) |
 			DSI_PHY_TIMING_0_TDATZERO(phy_timing.t_datzero) |
-			DSI_PHY_TIMING_0_THSPREPR(phy_timing.t_hsprepare); // Some more stupid Nvidia typos (prepr -> prepare) - Hybrid option for now
+			DSI_PHY_TIMING_0_THSPREPR(phy_timing.t_hsprepr);
 	tegra_dsi_writel(dsi, val, DSI_PHY_TIMING_0);
 
 	val = DSI_PHY_TIMING_1_TCLKTRAIL(phy_timing.t_clktrail) |

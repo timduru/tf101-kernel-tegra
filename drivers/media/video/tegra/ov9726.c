@@ -843,4 +843,3 @@ static void __exit ov9726_exit(void)
 
 module_init(ov9726_init);
 module_exit(ov9726_exit);
-MODULE_LICENSE("GPL v2");

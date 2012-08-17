@@ -1,3 +1,13 @@
+CHANGES : *_NEW files in 
+                         
+/drivers/video (tegra_dir)
+/drivers/media/video (tegra_dir)
+/arch/arcm/mach-tegra/include/mach (nvmap.h)
+/include/trace/events (nvhost.h)
+
+^ the above means all *_NEW files have been patched with their equivalents from an earlier 3.1.10 kernel revision sources
+
+
 	Linux kernel release 3.x <http://kernel.org/>
 
 These are the release notes for Linux version 3.  Read them carefully,

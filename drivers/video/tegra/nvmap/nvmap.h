@@ -3,7 +3,7 @@
  *
  * GPU memory management driver for Tegra
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2011, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 #include <linux/sched.h>
 #include <linux/wait.h>
 #include <linux/atomic.h>
-#include <mach/nvmap.h> // Fix compilation (include/nvmap.h - mach/nvmap.h)
+#include <mach/nvmap.h>
 #include "nvmap_heap.h"
 
 struct nvmap_device;
@@ -86,40 +86,10 @@ struct nvmap_handle {
 	struct mutex lock;
 };
 
-#ifdef CONFIG_NVMAP_PAGE_POOLS
-#define NVMAP_UC_POOL NVMAP_HANDLE_UNCACHEABLE
-#define NVMAP_WC_POOL NVMAP_HANDLE_WRITE_COMBINE
-#define NVMAP_IWB_POOL NVMAP_HANDLE_INNER_CACHEABLE
-#define NVMAP_WB_POOL NVMAP_HANDLE_CACHEABLE
-#define NVMAP_NUM_POOLS (NVMAP_HANDLE_CACHEABLE + 1)
-
-struct nvmap_page_pool {
-	struct mutex lock;
-	int npages;
-	struct page **page_array;
-	struct page **shrink_array;
-	int max_pages;
-	int flags;
-};
-
-int nvmap_page_pool_init(struct nvmap_page_pool *pool, int flags);
-#endif
-
 struct nvmap_share {
 	struct tegra_iovmm_client *iovmm;
 	wait_queue_head_t pin_wait;
 	struct mutex pin_lock;
-#ifdef CONFIG_NVMAP_PAGE_POOLS
-	union {
-		struct nvmap_page_pool pools[NVMAP_NUM_POOLS];
-		struct {
-			struct nvmap_page_pool uc_pool;
-			struct nvmap_page_pool wc_pool;
-			struct nvmap_page_pool iwb_pool;
-			struct nvmap_page_pool wb_pool;
-		};
-	};
-#endif
 #ifdef CONFIG_NVMAP_RECLAIM_UNPINNED_VM
 	struct mutex mru_lock;
 	struct list_head *mru_lists;
@@ -203,6 +173,9 @@ struct nvmap_handle *nvmap_get_handle_id(struct nvmap_client *client,
 
 struct nvmap_handle_ref *nvmap_create_handle(struct nvmap_client *client,
 					     size_t size);
+
+struct nvmap_handle_ref *nvmap_duplicate_handle_id(struct nvmap_client *client,
+						   unsigned long id);
 
 int nvmap_alloc_handle_id(struct nvmap_client *client,
 			  unsigned long id, unsigned int heap_mask,

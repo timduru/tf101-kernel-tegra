@@ -471,4 +471,3 @@ static void __exit soc380_exit(void)
 
 module_init(soc380_init);
 module_exit(soc380_exit);
-MODULE_LICENSE("GPL v2");

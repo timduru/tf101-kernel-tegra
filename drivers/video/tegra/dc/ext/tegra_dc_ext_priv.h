@@ -25,7 +25,7 @@
 #include <linux/poll.h>
 
 #include <mach/dc.h>
-#include <linux/nvmap.h>
+#include <mach/nvmap.h>
 
 #include <video/tegra_dc_ext.h>
 
@@ -56,8 +56,6 @@ struct tegra_dc_ext_win {
 	struct nvmap_handle_ref	*cur_handle[TEGRA_DC_NUM_PLANES];
 
 	struct workqueue_struct	*flip_wq;
-
-	atomic_t		nr_pending_flips;
 };
 
 struct tegra_dc_ext {
@@ -91,9 +89,6 @@ struct tegra_dc_ext_event_list {
 
 	struct list_head		list;
 };
-
-#define TEGRA_DC_EXT_CAPABILITIES \
-	TEGRA_DC_EXT_CAPABILITIES_CURSOR_MODE
 
 struct tegra_dc_ext_control_user {
 	struct tegra_dc_ext_control	*control;
