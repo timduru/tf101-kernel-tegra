@@ -19,7 +19,7 @@ config BCMDHD_FW_DIR
 
 config BCMDHD_NVRAM_DIR
 	depends on BCMDHD
-	string "NVRAM path"
+	string "NVRAM dir"
 	default "/system/etc"
 	---help---
 	  Path to the calibration file.

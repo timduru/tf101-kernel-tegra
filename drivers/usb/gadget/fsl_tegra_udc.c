@@ -79,14 +79,13 @@ int fsl_udc_clk_init(struct platform_device *pdev)
 	if (instance == -1)
 		instance = 0;
 
-	phy = tegra_usb_phy_open(instance, udc_base, pdata->phy_config,
-					TEGRA_USB_PHY_MODE_DEVICE, pdata->usb_phy_type);
+	phy = tegra_usb_phy_open(pdev);
 	if (IS_ERR(phy)) {
 		dev_err(&pdev->dev, "Can't open phy\n");
 		err = PTR_ERR(phy);
 		goto err1;
 	}
-	tegra_usb_phy_power_on(phy, true);
+	tegra_usb_phy_power_on(phy);
 
 	return 0;
 err1:
@@ -125,7 +124,7 @@ void fsl_udc_clk_release(void)
 
 void fsl_udc_clk_suspend(bool is_dpd)
 {
-	tegra_usb_phy_power_off(phy, is_dpd);
+	tegra_usb_phy_power_off(phy);
 	clk_disable(udc_clk);
 	clk_disable(sclk_clk);
 	clk_disable(emc_clk);
@@ -136,7 +135,7 @@ void fsl_udc_clk_resume(bool is_dpd)
 	clk_enable(emc_clk);
 	clk_enable(sclk_clk);
 	clk_enable(udc_clk);
-	tegra_usb_phy_power_on(phy,  is_dpd);
+	tegra_usb_phy_power_on(phy);
 }
 
 void fsl_udc_clk_enable(void)
@@ -151,5 +150,5 @@ void fsl_udc_clk_disable(void)
 
 bool fsl_udc_charger_detect(void)
 {
-	return tegra_usb_phy_charger_detect(phy);
+	return tegra_usb_phy_charger_detected(phy);
 }

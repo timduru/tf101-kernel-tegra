@@ -756,12 +756,12 @@ static inline bool fsl_udc_charger_detect(void)
 {
 	return false;
 }
+#endif
 void fsl_udc_dtd_prepare(void)
 {
 }
 void fsl_udc_ep_barrier(void)
 {
 }
-#endif
 
 #endif

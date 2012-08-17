@@ -143,4 +143,9 @@ void tegra_usb_phy_memory_prefetch_on(struct tegra_usb_phy *phy);
 
 void tegra_usb_phy_memory_prefetch_off(struct tegra_usb_phy *phy);
 
+enum tegra_usb_phy_mode {
+        TEGRA_USB_PHY_MODE_DEVICE,
+        TEGRA_USB_PHY_MODE_HOST,
+};
+
 #endif /* __MACH_USB_PHY_H */
